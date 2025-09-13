@@ -1,54 +1,63 @@
 import heapq
-import time
+from typing import List
 from Order import Order
 from decimal import Decimal
 
 class OrderBook:
-    """
-    Uses two heaps:
-    - max-heap for buys (highest price first)
-    - min-heap for sells (lowest price first)
-    """
-
     def __init__(self):
-        self.buys = []   # (-price, ts, order)
-        self.sells = []  # (price, ts, order)
-        self.last_price = Decimal("100.0")
+        # max-heap for buys (invert price), min-heap for sells
+        self.buy_orders: List[tuple] = []
+        self.sell_orders: List[tuple] = []
+        self.trades: List[float] = []  # list of trade prices
+        self.current_candle: List[float] = []
+        self.next_order_id = 0
 
-    def add_order(self, order: Order):
-        if order.side == "BUY":
-            heapq.heappush(self.buys, (-order.price, order.ts, order))
+    def add_order(self, side: str, price: float):
+        """Add an order and attempt to match it."""
+        order = Order(price=price, order_id=self.next_order_id, side=side)
+        self.next_order_id += 1
+
+        if side == "buy":
+            heapq.heappush(self.buy_orders, (-order.price, order.order_id, order))
         else:
-            heapq.heappush(self.sells, (order.price, order.ts, order))
+            heapq.heappush(self.sell_orders, (order.price, order.order_id, order))
 
-    def match(self):
-        trades = []
-        while self.buys and self.sells:
-            best_buy = self.buys[0][2]
-            best_sell = self.sells[0][2]
+        self.match_orders()
 
-            if best_buy.price < best_sell.price:
-                break  # no match possible
+    def match_orders(self):
+        """Match highest buy with lowest sell if possible."""
+        while self.buy_orders and self.sell_orders:
+            best_buy = self.buy_orders[0][2]
+            best_sell = self.sell_orders[0][2]
 
-            qty = min(best_buy.qty, best_sell.qty)
-            price = best_sell.price  # trade at sell price
+            if best_buy.price >= best_sell.price:
+                # Execute trade at midpoint (or best sell — up to you)
+                trade_price = (best_buy.price + best_sell.price) / 2
 
-            trades.append({
-                "price": price,
-                "qty": qty,
-                "buy": best_buy.player_id,
-                "sell": best_sell.player_id,
-                "ts": int(time.time() * 1000)
-            })
+                # Record trade price
+                self.trades.append(trade_price)
+                self.current_candle.append(trade_price)
 
-            self.last_price = price
+                # Remove both orders (since we don’t track volume)
+                heapq.heappop(self.buy_orders)
+                heapq.heappop(self.sell_orders)
+            else:
+                break
 
-            best_buy.qty -= qty
-            best_sell.qty -= qty
+    def get_candle(self, reset=True):
+        """Return OHLC for current trades in interval."""
+        if not self.current_candle:
+            return None
 
-            if best_buy.qty == 0:
-                heapq.heappop(self.buys)
-            if best_sell.qty == 0:
-                heapq.heappop(self.sells)
+        prices = self.current_candle
+        candle = {
+            "open": prices[0],
+            "high": max(prices),
+            "low": min(prices),
+            "close": prices[-1],
+        }
 
-        return trades
+        if reset:
+            self.current_candle = []
+
+        return candle

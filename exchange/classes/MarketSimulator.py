@@ -1,46 +1,34 @@
 import random
-import uuid
-from decimal import Decimal
-from Order import Order
+from OrderBook import OrderBook
 
 class MarketSimulator:
-    def __init__(self, order_book, base_price=100.0):
-        self.book = order_book
-        self.base_price = Decimal(str(base_price))
-        self.sentiment = 0.0
-        self.tick_count = 0
+    def __init__(self, base_price=100.0, growth_rate=0.001, sentiment=0.0, candle_interval=10):
+        self.base_price = base_price
+        self.growth_rate = growth_rate
+        self.sentiment = sentiment
+        self.tick = 0
+        self.order_book = OrderBook()
+        self.candle_interval = candle_interval
 
-    def true_order_price(self):
-        """
-        Base price grows slowly over time (e.g. 0.01% per tick),
-        adjusted by current sentiment.
-        """
-        drift = Decimal("0.0001") * self.tick_count  # slow growth
-        sentiment_factor = Decimal(str(self.sentiment)) * Decimal("0.5")
-        return self.base_price + drift + sentiment_factor
+    def true_price(self):
+        """True price = base growth + sentiment effect."""
+        growth = self.base_price * (1 + self.growth_rate * self.tick)
+        return growth * (1 + self.sentiment)
 
-    def generate_agent_order(self, agent_id):
-        true_price = self.true_order_price()
-        price = true_price * Decimal(str(1 + random.uniform(-0.01, 0.01)))
-        side = "BUY" if random.random() < 0.5 else "SELL"
-        qty = random.randint(1, 10)
+    def simulate_tick(self):
+        """Simulate one tick by generating a random buy and sell order."""
+        self.tick += 1
+        true_p = self.true_price()
 
-        order = Order(
-            order_id=str(uuid.uuid4()),
-            player_id=agent_id,
-            side=side,
-            qty=qty,
-            price=price
-        )
-        self.book.add_order(order)
+        # Buy slightly below true price
+        buy_price = true_p * random.uniform(0.99, 1.0)
+        self.order_book.add_order("buy", buy_price)
 
-    def tick(self, n_agents=5):
-        # update sentiment slowly drifting
-        self.sentiment = self.sentiment * 0.9 + random.uniform(-0.2, 0.2)
+        # Sell slightly above true price
+        sell_price = true_p * random.uniform(1.0, 1.01)
+        self.order_book.add_order("sell", sell_price)
 
-        for i in range(n_agents):
-            self.generate_agent_order(agent_id=f"agent{i}")
-
-        trades = self.book.match()
-        self.tick_count += 1
-        return trades
+        # Every N ticks, export a candle
+        if self.tick % self.candle_interval == 0:
+            return self.order_book.get_candle()
+        return None
