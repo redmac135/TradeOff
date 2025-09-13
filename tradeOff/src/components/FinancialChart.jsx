@@ -39,7 +39,7 @@ ChartJS.register(
 );
 
 const FinancialChart = ({ useMockData = true, apiData = [] }) => {
-  const { marketData } = useGameContext();
+  const { marketData, positions, currentMarketPrice, calculatePositionPnL } = useGameContext();
   const chartRef = useRef(null);
   const containerRef = useRef(null);
   const [chartKey, setChartKey] = useState(0);
@@ -207,31 +207,70 @@ const FinancialChart = ({ useMockData = true, apiData = [] }) => {
   // Stable chart data with error handling
   const chartData = useMemo(() => {
     try {
-      return {
-        datasets: [
-          {
-            label: 'OHLC Data',
-            data: dataSource,
-            backgroundColors: {
-              up: '#4ba03a',
-              down: '#b91a0e',
-              unchanged: '#999',
-            },
-            borderColors: {
-              up: '#4ba03a',
-              down: '#b91a0e',
-              unchanged: '#999',
-            },
-            borderWidth: 1,
+      const datasets = [
+        {
+          label: 'OHLC Data',
+          data: dataSource,
+          backgroundColors: {
+            up: '#4ba03a',
+            down: '#b91a0e',
+            unchanged: '#999',
           },
-        ],
-      };
+          borderColors: {
+            up: '#4ba03a',
+            down: '#b91a0e',
+            unchanged: '#999',
+          },
+          borderWidth: 1,
+          order: 2, // Render candlesticks behind position lines
+        },
+      ];
+
+      // Add horizontal lines for each position
+      positions.forEach((position) => {
+        const profitLoss = calculatePositionPnL(position, currentMarketPrice);
+        const isProfit = profitLoss >= 0;
+        
+        // Determine color based on position type and current profit/loss
+        let lineColor;
+        if (position.type === 'long') {
+          lineColor = isProfit ? '#22c55e' : '#ef4444'; // Green if profit, red if loss
+        } else {
+          lineColor = isProfit ? '#22c55e' : '#ef4444'; // Green if profit, red if loss
+        }
+
+        // Create horizontal line data across the entire chart width
+        const xMin = dataSource.length > 0 ? Math.min(...dataSource.map(d => d.x)) : 0;
+        const xMax = dataSource.length > 0 ? Math.max(...dataSource.map(d => d.x)) : 30;
+        
+        datasets.push({
+          label: `${position.type.toUpperCase()} Entry - $${position.entryPrice.toFixed(2)}`,
+          type: 'line',
+          data: [
+            { x: xMin - 1, y: position.entryPrice },
+            { x: xMax + 1, y: position.entryPrice }
+          ],
+          borderColor: lineColor,
+          backgroundColor: lineColor + '20', // Add transparency
+          borderWidth: 3, // Make lines more prominent
+          borderDash: position.type === 'short' ? [8, 4] : [], // Dashed line for short positions
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          fill: false,
+          tension: 0,
+          spanGaps: true,
+          clip: false, // Allow line to extend beyond data area
+          order: 1, // Render position lines above candlesticks
+        });
+      });
+
+      return { datasets };
     } catch (error) {
       console.error('Error creating chart data:', error);
       setChartError('Failed to create chart data');
       return { datasets: [] };
     }
-  }, [dataSource]);
+  }, [dataSource, positions, currentMarketPrice, calculatePositionPnL]);
 
   // Enhanced options with better error handling and performance
   const options = useMemo(() => ({
@@ -244,18 +283,65 @@ const FinancialChart = ({ useMockData = true, apiData = [] }) => {
     spanGaps: false,
     devicePixelRatio: window.devicePixelRatio || 1,
     plugins: {
-      legend: { display: false },
+      legend: { 
+        display: positions.length > 0,
+        position: 'top',
+        labels: {
+          filter: (legendItem) => {
+            // Only show position lines in legend, not OHLC data
+            return legendItem.text && legendItem.text.includes('Entry');
+          },
+          usePointStyle: true,
+          pointStyle: 'line',
+          font: {
+            size: 12,
+          },
+          generateLabels: (chart) => {
+            const original = ChartJS.defaults.plugins.legend.labels.generateLabels;
+            const labels = original.call(this, chart);
+            
+            return labels.map(label => {
+              if (label.text && label.text.includes('Entry')) {
+                // Customize position line labels
+                const position = positions.find(p => 
+                  label.text.includes(p.type.toUpperCase()) && 
+                  label.text.includes(p.entryPrice.toFixed(2))
+                );
+                if (position) {
+                  const profitLoss = calculatePositionPnL(position, currentMarketPrice);
+                  const status = profitLoss >= 0 ? '📈' : '📉';
+                  label.text = `${status} ${position.type.toUpperCase()} @ $${position.entryPrice.toFixed(2)}`;
+                }
+              }
+              return label;
+            });
+          }
+        }
+      },
       tooltip: {
         enabled: true,
         mode: 'nearest',
         intersect: false,
         filter: (tooltipItem) => {
-          return tooltipItem && tooltipItem.raw && typeof tooltipItem.raw === 'object';
+          // Allow both OHLC data and position lines
+          return tooltipItem && (
+            (tooltipItem.raw && typeof tooltipItem.raw === 'object') || // OHLC data
+            (tooltipItem.parsed && typeof tooltipItem.parsed.y === 'number') // Position lines
+          );
         },
         callbacks: {
           title: (context) => {
             try {
-              if (!context || !context[0] || !context[0].raw) return 'No data';
+              if (!context || !context[0]) return 'No data';
+              const dataset = context[0].dataset;
+              
+              // Check if this is a position line
+              if (dataset.label && dataset.label.includes('Entry')) {
+                return dataset.label;
+              }
+              
+              // Regular OHLC data
+              if (!context[0].raw) return 'No data';
               const dataPoint = context[0].raw;
               return `Data Point: ${Math.floor(dataPoint.x) + 1}`;
             } catch {
@@ -264,6 +350,26 @@ const FinancialChart = ({ useMockData = true, apiData = [] }) => {
           },
           label: (context) => {
             try {
+              const dataset = context.dataset;
+              
+              // Check if this is a position line
+              if (dataset.label && dataset.label.includes('Entry')) {
+                const price = context.parsed.y;
+                const position = positions.find(p => Math.abs(p.entryPrice - price) < 0.01);
+                if (position) {
+                  const profitLoss = calculatePositionPnL(position, currentMarketPrice);
+                  const profitLossPercent = (profitLoss / position.investment) * 100;
+                  return [
+                    `Entry Price: $${position.entryPrice.toFixed(2)}`,
+                    `Investment: $${position.investment.toLocaleString()}`,
+                    `Current P&L: ${profitLoss >= 0 ? '+' : ''}$${profitLoss.toFixed(2)} (${profitLossPercent.toFixed(1)}%)`,
+                    `Type: ${position.type.toUpperCase()}`
+                  ];
+                }
+                return `Entry Price: $${price.toFixed(2)}`;
+              }
+              
+              // Regular OHLC data
               if (!context || !context.raw) return 'No data';
               const dataPoint = context.raw;
               return [
@@ -345,7 +451,7 @@ const FinancialChart = ({ useMockData = true, apiData = [] }) => {
         event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
       }
     },
-  }), [yMin, yMax, xMin, xMax]);
+  }), [yMin, yMax, xMin, xMax, positions, currentMarketPrice, calculatePositionPnL]);
 
   // Enhanced error boundary for chart rendering
   const renderChart = useCallback(() => {

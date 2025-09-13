@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { GameContext } from './context/GameContext';
 import Navbar from './components/Navbar';
 import FinancialChart from './components/FinancialChart';
@@ -63,6 +63,7 @@ function App() {
   const [gameTimer, setGameTimer] = useState(180); // 180 seconds countdown
   const [userGoal, setUserGoal] = useState({ name: 'First Car', amount: 15000 }); // User goal
   const [isPageVisible, setIsPageVisible] = useState(true); // Track page visibility
+  const [realizedPnL, setRealizedPnL] = useState(0); // Track realized P&L from closed positions
 
   // Always use mock data for now (can be changed internally later)
   const useMockData = true;
@@ -93,17 +94,8 @@ function App() {
     return marketData[marketData.length - 1].c;
   }, [marketData]);
 
-  // Calculate total equity from positions
-  const totalEquity = useMemo(() => {
-    return positions.reduce((total, position) => {
-      const currentValue = position.investment;
-      const profitLoss = calculatePositionPnL(position, currentMarketPrice);
-      return total + currentValue + profitLoss;
-    }, 0);
-  }, [positions, currentMarketPrice]);
-
   // Calculate profit/loss for a position
-  const calculatePositionPnL = (position, currentPrice) => {
+  const calculatePositionPnL = useCallback((position, currentPrice) => {
     if (!position || !currentPrice) return 0;
     
     const priceChange = currentPrice - position.entryPrice;
@@ -115,7 +107,26 @@ function App() {
       return position.investment * (-percentChange);
     }
     return 0;
-  };
+  }, []);
+
+  // Calculate total equity from positions
+  const totalEquity = useMemo(() => {
+    return positions.reduce((total, position) => {
+      const currentValue = position.investment;
+      const profitLoss = calculatePositionPnL(position, currentMarketPrice);
+      return total + currentValue + profitLoss;
+    }, 0);
+  }, [positions, currentMarketPrice, calculatePositionPnL]);
+
+  // Calculate pure P&L (profit/loss only, not including investments)
+  const totalPnL = useMemo(() => {
+    const unrealized = positions.reduce((total, position) => {
+      const profitLoss = calculatePositionPnL(position, currentMarketPrice);
+      return total + profitLoss;
+    }, 0);
+
+    return realizedPnL + unrealized;
+  }, [positions, currentMarketPrice, calculatePositionPnL, realizedPnL]);
 
   // Handle trade execution
   const handleTrade = (tradeType, percentage) => {
@@ -188,6 +199,9 @@ function App() {
     // Update cash with the return
     setCash(prevCash => prevCash + totalReturn);
     
+  // Accumulate realized profit/loss
+  setRealizedPnL(prev => prev + profitLoss);
+    
     // Remove position from array
     setPositions(prevPositions => prevPositions.filter(p => p.id !== positionId));
 
@@ -207,6 +221,9 @@ function App() {
 
     setCash(prevCash => prevCash + totalReturn);
     setPositions([]);
+
+  // Accumulate all realized P&L
+  setRealizedPnL(prev => prev + totalProfitLoss);
 
     return { totalReturn, totalProfitLoss };
   };
@@ -336,6 +353,8 @@ function App() {
     userGoal,
     currentMarketPrice,
     totalEquity,
+  totalPnL,
+  realizedPnL,
     
     // Actions
     handleTrade,
@@ -375,9 +394,9 @@ function App() {
                 <MarketNews />
               </div>
               <PositionList />
-              <Card title="Cash Position" value={cash} type="cash" />
-              <Card title="Equity Position" value={`${positions.length} positions`} type="equity" />
-              <Card title="Total P&L" value={totalEquity - 50000} type="cash" />
+              <Card title="Your Cash" value={cash} type="cash" />
+              <Card title="Your Active Positions" value={`${positions.length} positions`} type="equity" />
+              <Card title="Your Total P&L" value={totalPnL} type="cash" />
             </div>
           </div>
         </main>
