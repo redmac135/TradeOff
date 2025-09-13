@@ -1,5 +1,5 @@
 import random
-from OrderBook import OrderBook
+from .OrderBook import OrderBook
 
 class MarketSimulator:
     def __init__(self, base_price=100.0, growth_rate=0.001, sentiment=0.0, candle_interval=10):
@@ -20,13 +20,16 @@ class MarketSimulator:
         self.tick += 1
         true_p = self.true_price()
 
-        # Buy slightly below true price
-        buy_price = true_p * random.uniform(0.99, 1.0)
-        self.order_book.add_order("buy", buy_price)
+        # Generate random number of orders (10-20)
+        num_orders = random.randint(10, 20)
 
-        # Sell slightly above true price
-        sell_price = true_p * random.uniform(1.0, 1.01)
-        self.order_book.add_order("sell", sell_price)
+        for _ in range(num_orders):
+            # Randomly decide buy or sell
+            side = "buy" if random.random() < 0.5 else "sell"
+            # Price within ±1% of true price
+            price_variation = true_p * random.uniform(-0.01, 0.01)
+            price = true_p + price_variation
+            self.order_book.add_order(side, price)
 
         # Every N ticks, export a candle
         if self.tick % self.candle_interval == 0:

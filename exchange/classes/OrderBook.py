@@ -1,7 +1,6 @@
 import heapq
 from typing import List
-from Order import Order
-from decimal import Decimal
+from .Order import Order
 
 class OrderBook:
     def __init__(self):
