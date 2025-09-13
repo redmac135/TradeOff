@@ -1,38 +1,8 @@
 import React from 'react';
+import { useGameContext } from '../context/GameContext';
 
 const MarketNews = () => {
-  const newsItems = [
-    {
-      title: "Housing prices in Toronto up by 5%.",
-      description: "Lorem ipsum is a placeholder text used in graphic design, publishing, and web development.",
-      priority: "high"
-    },
-    {
-      title: "Tech stocks showing strong performance.",
-      description: "Lorem ipsum is a placeholder text used in graphic design, publishing, and web development.",
-      priority: "medium"
-    },
-    {
-      title: "Bank of Canada announces interest rate decision.",
-      description: "Lorem ipsum is a placeholder text used in graphic design, publishing, and web development.",
-      priority: "medium"
-    },
-    {
-      title: "Energy sector sees modest gains.",
-      description: "Lorem ipsum is a placeholder text used in graphic design, publishing, and web development.",
-      priority: "medium"
-    },
-    {
-      title: "Market volatility expected to continue.",
-      description: "Lorem ipsum is a placeholder text used in graphic design, publishing, and web development.",
-      priority: "medium"
-    },
-    {
-      title: "Commodity prices fluctuate amid global uncertainty.",
-      description: "Lorem ipsum is a placeholder text used in graphic design, publishing, and web development.",
-      priority: "low"
-    }
-  ];
+  const { newsItems } = useGameContext();
 
   const getPriorityColor = (priority) => {
     switch (priority) {
