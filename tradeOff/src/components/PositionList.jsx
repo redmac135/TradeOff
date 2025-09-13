@@ -2,24 +2,15 @@ import React from 'react';
 import { useGameContext } from '../context/GameContext';
 
 const PositionList = () => {
-  const { positions, currentMarketPrice, calculatePositionPnL, cash } = useGameContext();
-
-  // Calculate total money made (current cash + positions value - starting amount)
-  const startingCash = 50000;
-  const currentPositionsValue = positions.reduce((total, position) => {
-    const profitLoss = calculatePositionPnL(position, currentMarketPrice);
-    return total + position.investment + profitLoss;
-  }, 0);
-  const totalValue = cash + currentPositionsValue;
-  const moneyMade = totalValue - startingCash;
+  const { positions, currentMarketPrice, calculatePositionPnL } = useGameContext();
 
   if (positions.length === 0) {
     return (
       <div className="w-full p-4 bg-gray-50 rounded-lg border border-gray-200">
         <div className="text-center">
           <div className="text-sm text-gray-600 mb-1">Amount made by RBC InvestEase</div>
-          <div className={`text-lg font-bold ${moneyMade >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {moneyMade >= 0 ? '+' : ''}${moneyMade.toLocaleString()}
+          <div className="text-lg font-bold text-gray-600">
+            $0.00
           </div>
         </div>
       </div>

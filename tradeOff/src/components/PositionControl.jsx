@@ -1,31 +1,34 @@
 import React, { useState, useRef } from 'react';
+import { useGameContext } from '../context/GameContext';
 
 const PositionControl = () => {
-  // Use local state for now instead of game context to prevent errors
+  // Use GameContext for real trading functionality
+  const { cash, positions, handleTrade, handleSellAllPositions } = useGameContext();
   const [sliderValue, setSliderValue] = useState(50); // 0-100 range
-  const [hasOpenPositions, setHasOpenPositions] = useState(false); // Mock state for now
-  const [mockCash] = useState(50000); // Mock cash value
   const [isSliderActive, setIsSliderActive] = useState(false); // Track hover/active state
   const sliderRef = useRef(null); // Reference to the slider container
+  
+  // Check if there are open positions
+  const hasOpenPositions = positions.length > 0;
 
   const handlePositionChange = (position) => {
     console.log('Position button clicked:', position);
     
     if (position === 'short' || position === 'long') {
-      // For now, just log the action - no actual trading logic
-      console.log(`${position.charAt(0).toUpperCase() + position.slice(1)} button clicked with ${sliderValue}% allocation`);
+      // Execute real trade using the GameContext
+      const success = handleTrade(position, sliderValue);
       
-      // Optional: Show brief visual feedback that button was clicked
-      const tradeAmount = (mockCash * sliderValue) / 100;
-      console.log(`Would trade: ${position} with $${tradeAmount.toLocaleString()}`);
-      
-      // Simply toggle to show sell button - no automatic revert
-      setHasOpenPositions(true);
+      if (success) {
+        const tradeAmount = (cash * sliderValue) / 100;
+        console.log(`Successfully executed ${position} trade with ${sliderValue}% allocation ($${tradeAmount.toLocaleString()})`);
+      } else {
+        console.log(`Failed to execute ${position} trade`);
+      }
       
     } else if (position === 'sell') {
-      // Mock sell action - just reset to initial state
-      console.log('Sell button clicked (mock action)');
-      setHasOpenPositions(false);
+      // Sell all positions using GameContext
+      const result = handleSellAllPositions();
+      console.log('Sold all positions:', result);
     }
   };
 
@@ -74,7 +77,7 @@ const PositionControl = () => {
   // Calculate the exact position for better gradient alignment
   const circlePosition = sliderValue;
 
-  const tradeAmount = (mockCash * sliderValue) / 100;
+  const tradeAmount = (cash * sliderValue) / 100;
 
   return (
     <div className="w-full h-full shadow-[4px_4px_20px_0px_rgba(0,0,0,0.10)] flex justify-start items-center gap-4 bg-white rounded-[10px] p-3">
@@ -85,7 +88,7 @@ const PositionControl = () => {
             className="flex-1 px-6 py-3 rounded-[10px] flex justify-center items-center transition-all duration-200 hover:scale-105 active:scale-95 bg-red-600 hover:bg-red-700"
           >
             <div className="text-white text-lg font-bold font-['Roboto_Flex']">
-              Sell All (demo)
+              Sell All
             </div>
           </button>
         ) : (
@@ -154,7 +157,7 @@ const PositionControl = () => {
         <div className="ml-4 text-sm font-medium text-gray-600 min-w-[100px] text-right">
           {hasOpenPositions ? (
             <span className="text-green-600">
-              Demo mode active
+              {positions.length} position{positions.length !== 1 ? 's' : ''} open
             </span>
           ) : (
             <>
