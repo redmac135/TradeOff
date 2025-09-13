@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 
 const PositionControl = () => {
-  const [selectedPosition, setSelectedPosition] = useState('long'); // 'short' or 'long'
+  const [selectedPosition, setSelectedPosition] = useState(null); // null, 'short', 'long', or 'sell'
   const [sliderValue, setSliderValue] = useState(50); // 0-100 range
 
   const handlePositionChange = (position) => {
-    setSelectedPosition(position);
+    if (position === 'short' || position === 'long') {
+      setSelectedPosition('sell');
+    } else {
+      setSelectedPosition(position);
+    }
   };
 
   const handleSliderChange = (event) => {
@@ -15,34 +19,35 @@ const PositionControl = () => {
   return (
     <div className="w-full h-full shadow-[4px_4px_20px_0px_rgba(0,0,0,0.10)] flex justify-start items-center gap-4 bg-white rounded-[10px] p-3">
       <div className="w-[360px] flex justify-start items-center gap-3 h-full">
-        <button 
-          onClick={() => handlePositionChange('short')}
-          className={`flex-1 px-6 py-3 rounded-[10px] flex justify-center items-center transition-all duration-200 hover:scale-105 active:scale-95 ${
-            selectedPosition === 'short' 
-              ? 'bg-red-600 hover:bg-red-700' 
-              : 'bg-gray-800 hover:bg-gray-700'
-          }`}
-        >
-          <div className={`text-lg font-bold font-['Roboto_Flex'] ${
-            selectedPosition === 'short' ? 'text-white' : 'text-blue-300'
-          }`}>
-            Short
-          </div>
-        </button>
-        <button 
-          onClick={() => handlePositionChange('long')}
-          className={`flex-1 px-6 py-3 rounded-[10px] flex justify-center items-center transition-all duration-200 hover:scale-105 active:scale-95 ${
-            selectedPosition === 'long' 
-              ? 'bg-green-600 hover:bg-green-700' 
-              : 'bg-gray-800 hover:bg-gray-700'
-          }`}
-        >
-          <div className={`text-lg font-bold font-['Roboto_Flex'] ${
-            selectedPosition === 'long' ? 'text-white' : 'text-blue-300'
-          }`}>
-            Long
-          </div>
-        </button>
+        {selectedPosition === 'sell' ? (
+          <button 
+            onClick={() => handlePositionChange(null)}
+            className="flex-1 px-6 py-3 rounded-[10px] flex justify-center items-center transition-all duration-200 hover:scale-105 active:scale-95 bg-red-600 hover:bg-red-700"
+          >
+            <div className="text-white text-lg font-bold font-['Roboto_Flex']">
+              Sell
+            </div>
+          </button>
+        ) : (
+          <>
+            <button 
+              onClick={() => handlePositionChange('short')}
+              className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-[10px] flex justify-center items-center transition-all duration-200 hover:scale-105 active:scale-95"
+            >
+              <div className="text-blue-300 text-lg font-bold font-['Roboto_Flex']">
+                Short
+              </div>
+            </button>
+            <button 
+              onClick={() => handlePositionChange('long')}
+              className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-[10px] flex justify-center items-center transition-all duration-200 hover:scale-105 active:scale-95"
+            >
+              <div className="text-blue-300 text-lg font-bold font-['Roboto_Flex']">
+                Long
+              </div>
+            </button>
+          </>
+        )}
       </div>
       <div className="flex-1 relative flex justify-center items-center px-4">
         <div className="flex-1 h-3 bg-gradient-to-r from-[#005eaa] from-20% to-[#f1f6f9] to-50% rounded-[20px] relative">
