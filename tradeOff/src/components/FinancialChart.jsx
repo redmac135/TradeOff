@@ -1,4 +1,5 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { useGameContext } from '../context/GameContext';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -37,160 +38,409 @@ ChartJS.register(
   OhlcElement
 );
 
-// Generate initial mock data
-const generateInitialData = () => {
-  const data = [];
-  let lastClose = 9000;
-  const now = new Date();
-
-  for (let i = 0; i < 30; i++) {
-    const date = new Date(now.getTime() - (30 - i) * 5000); // 5 seconds apart
-    const open = +(lastClose + (Math.random() - 0.5) * 100).toFixed(2);
-    const close = +(open + (Math.random() - 0.5) * 200).toFixed(2);
-    const high = +(Math.max(open, close) + Math.random() * 50).toFixed(2);
-    const low = +(Math.min(open, close) - Math.random() * 50).toFixed(2);
-
-    data.push({
-      x: date.getTime(),
-      o: open,
-      h: high,
-      l: low,
-      c: close,
-    });
-    
-    lastClose = close;
-  }
-  return data;
-};
-
 const FinancialChart = ({ useMockData = true, apiData = [] }) => {
+  const { marketData } = useGameContext();
   const chartRef = useRef(null);
-  const [mockData, setMockData] = useState(generateInitialData);
+  const containerRef = useRef(null);
+  const [chartKey, setChartKey] = useState(0);
+  const [lastResetTime, setLastResetTime] = useState(Date.now());
+  const [isVisible, setIsVisible] = useState(true);
+  const [chartError, setChartError] = useState(null);
+  const [forceRerender, setForceRerender] = useState(0);
 
-  // Update mock data every 5 seconds
+  // Use marketData from context, ensure it's always an array with valid data
+  const dataSource = useMemo(() => {
+    const data = useMockData ? marketData : apiData;
+    if (!Array.isArray(data)) return [];
+    
+    // Validate and clean data, and convert to sequential index instead of time-based
+    const validData = data.filter(item => 
+      item && 
+      typeof item.x === 'number' && 
+      typeof item.o === 'number' && 
+      typeof item.h === 'number' && 
+      typeof item.l === 'number' && 
+      typeof item.c === 'number' &&
+      !isNaN(item.x) && !isNaN(item.o) && !isNaN(item.h) && !isNaN(item.l) && !isNaN(item.c) &&
+      item.h >= item.l && // High should be >= Low
+      item.h >= Math.max(item.o, item.c) && // High should be >= Open and Close
+      item.l <= Math.min(item.o, item.c) // Low should be <= Open and Close
+    ).slice(-30); // Keep only last 30 for performance
+
+    // Convert to sequential indexing to avoid gaps
+    return validData.map((item, index) => ({
+      ...item,
+      x: index // Use sequential index instead of timestamp
+    }));
+  }, [useMockData, marketData, apiData]);
+
+  // Handle page visibility changes (when user switches tabs)
   useEffect(() => {
-    if (!useMockData) return;
+    const handleVisibilityChange = () => {
+      const isPageVisible = !document.hidden;
+      setIsVisible(isPageVisible);
+      
+      if (isPageVisible) {
+        console.log('Page became visible, refreshing chart...');
+        // Small delay to ensure the page is fully active
+        setTimeout(() => {
+          setChartError(null);
+          setChartKey(prev => prev + 1);
+          setForceRerender(prev => prev + 1);
+        }, 100);
+      } else {
+        console.log('Page became hidden');
+      }
+    };
 
-    const interval = setInterval(() => {
-      setMockData(prevData => {
-        const newData = [...prevData];
-        const lastCandle = newData[newData.length - 1];
+    // Add event listeners for visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+    window.addEventListener('blur', () => setIsVisible(false));
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+      window.removeEventListener('blur', () => setIsVisible(false));
+    };
+  }, []);
+
+  // Reset chart periodically and when page becomes visible again
+  useEffect(() => {
+    const resetInterval = setInterval(() => {
+      if (isVisible) {
+        console.log('Periodic chart reset...');
+        setChartError(null);
+        setChartKey(prev => prev + 1);
+        setLastResetTime(Date.now());
         
-        // Generate new candlestick data
-        const open = lastCandle.c;
-        const close = +(open + (Math.random() - 0.5) * 200).toFixed(2);
-        const high = +(Math.max(open, close) + Math.random() * 50).toFixed(2);
-        const low = +(Math.min(open, close) - Math.random() * 50).toFixed(2);
+        // Clean up old chart instance
+        if (chartRef.current) {
+          try {
+            chartRef.current.destroy();
+          } catch (error) {
+            console.warn('Error destroying chart during reset:', error);
+          }
+        }
+      }
+    }, 120000); // Reset every 2 minutes when page is visible
 
-        // Add new candle
-        newData.push({
-          x: Date.now(),
-          o: open,
-          h: high,
-          l: low,
-          c: close,
-        });
+    return () => clearInterval(resetInterval);
+  }, [isVisible]);
 
-        // Keep only last 30 candles for performance
-        return newData.slice(-30);
-      });
-    }, 5000);
+  // Force chart recreation when data changes significantly or after becoming visible
+  useEffect(() => {
+    const now = Date.now();
+    if (dataSource.length > 25 && now - lastResetTime > 60000 && isVisible) {
+      console.log('Force updating chart due to data accumulation...');
+      setChartKey(prev => prev + 1);
+      setLastResetTime(now);
+    }
+  }, [dataSource.length, lastResetTime, isVisible]);
 
-    return () => clearInterval(interval);
-  }, [useMockData]);
+  // Monitor chart health and recreate if needed
+  useEffect(() => {
+    const healthCheck = setInterval(() => {
+      if (isVisible && chartRef.current) {
+        try {
+          // Check if chart instance is healthy
+          const chart = chartRef.current;
+          if (!chart.canvas || !chart.canvas.getContext || !chart.ctx) {
+            console.warn('Chart canvas context lost, recreating...');
+            setChartError('Canvas context lost');
+            setChartKey(prev => prev + 1);
+          }
+        } catch (error) {
+          console.warn('Chart health check failed:', error);
+          setChartError('Chart instance corrupted');
+          setChartKey(prev => prev + 1);
+        }
+      }
+    }, 10000); // Check every 10 seconds
 
-  const dataSource = useMemo(() => (useMockData ? mockData : apiData), [useMockData, mockData, apiData]);
+    return () => clearInterval(healthCheck);
+  }, [isVisible]);
 
-  // Memoize chart data for candlestick chart
-  const chartData = useMemo(() => ({
-    datasets: [
-      {
-        label: 'OHLC Data',
-        data: dataSource,
-        backgroundColors: {
-          up: '#4ba03a',
-          down: '#b91a0e',
-          unchanged: '#999',
-        },
-        borderColors: {
-          up: '#4ba03a',
-          down: '#b91a0e',
-          unchanged: '#999',
-        },
-      },
-    ],
-  }), [dataSource]);
+  // Calculate safe axis ranges
+  const { yMin, yMax, xMin, xMax } = useMemo(() => {
+    if (!dataSource || dataSource.length === 0) {
+      return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
+    }
 
-  // Memoize options
+    try {
+      // Get price ranges with safety checks
+      const allHighs = dataSource.map(d => Number(d.h)).filter(h => !isNaN(h));
+      const allLows = dataSource.map(d => Number(d.l)).filter(l => !isNaN(l));
+      
+      if (allHighs.length === 0 || allLows.length === 0) {
+        return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
+      }
+
+      const currentMin = Math.min(...allLows);
+      const currentMax = Math.max(...allHighs);
+      
+      // Ensure valid ranges
+      if (currentMin >= currentMax || !isFinite(currentMin) || !isFinite(currentMax)) {
+        return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
+      }
+
+      // Calculate padding (5% on each side, minimum $50)
+      const range = currentMax - currentMin;
+      const padding = Math.max(range * 0.05, 50);
+      
+      // Round to nice numbers for better visualization
+      const yMin = Math.floor((currentMin - padding) / 10) * 10;
+      const yMax = Math.ceil((currentMax + padding) / 10) * 10;
+      
+      // X-axis: use sequential indexing (0 to length-1) with small buffer
+      const xMin = -1;
+      const xMax = Math.max(dataSource.length, 30);
+
+      return { yMin, yMax, xMin, xMax };
+      
+    } catch (error) {
+      console.error('Error calculating axis ranges:', error);
+      return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
+    }
+  }, [dataSource]);
+
+  // Stable chart data with error handling
+  const chartData = useMemo(() => {
+    try {
+      return {
+        datasets: [
+          {
+            label: 'OHLC Data',
+            data: dataSource,
+            backgroundColors: {
+              up: '#4ba03a',
+              down: '#b91a0e',
+              unchanged: '#999',
+            },
+            borderColors: {
+              up: '#4ba03a',
+              down: '#b91a0e',
+              unchanged: '#999',
+            },
+            borderWidth: 1,
+          },
+        ],
+      };
+    } catch (error) {
+      console.error('Error creating chart data:', error);
+      setChartError('Failed to create chart data');
+      return { datasets: [] };
+    }
+  }, [dataSource]);
+
+  // Enhanced options with better error handling and performance
   const options = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     animation: false,
     resizeDelay: 0,
+    parsing: false,
+    normalized: true,
+    spanGaps: false,
+    devicePixelRatio: window.devicePixelRatio || 1,
     plugins: {
       legend: { display: false },
       tooltip: {
         enabled: true,
         mode: 'nearest',
         intersect: false,
+        filter: (tooltipItem) => {
+          return tooltipItem && tooltipItem.raw && typeof tooltipItem.raw === 'object';
+        },
         callbacks: {
           title: (context) => {
-            const dataPoint = context[0].raw;
-            return `Time: ${new Date(dataPoint.x).toLocaleTimeString()}`;
+            try {
+              if (!context || !context[0] || !context[0].raw) return 'No data';
+              const dataPoint = context[0].raw;
+              return `Data Point: ${Math.floor(dataPoint.x) + 1}`;
+            } catch {
+              return 'Invalid data point';
+            }
           },
           label: (context) => {
-            const dataPoint = context.raw;
-            return [
-              `Open: $${dataPoint.o}`,
-              `High: $${dataPoint.h}`,
-              `Low: $${dataPoint.l}`,
-              `Close: $${dataPoint.c}`,
-            ];
+            try {
+              if (!context || !context.raw) return 'No data';
+              const dataPoint = context.raw;
+              return [
+                `Open: $${Number(dataPoint.o).toFixed(2)}`,
+                `High: $${Number(dataPoint.h).toFixed(2)}`,
+                `Low: $${Number(dataPoint.l).toFixed(2)}`,
+                `Close: $${Number(dataPoint.c).toFixed(2)}`,
+              ];
+            } catch {
+              return 'Invalid data';
+            }
           },
         },
       },
     },
     scales: {
       x: {
-        type: 'time',
-        time: {
-          unit: 'second',
-          displayFormats: {
-            second: 'HH:mm:ss',
-          },
-        },
+        type: 'linear', // Changed from 'time' to 'linear'
+        min: xMin,
+        max: xMax,
         ticks: {
           color: '#949494',
           font: { size: 12, family: 'Roboto' },
+          maxTicksLimit: 10,
+          autoSkip: true,
+          callback: function(value) {
+            // Show cleaner tick labels (every few points)
+            return Math.floor(value) % 5 === 0 ? `${Math.floor(value)}` : '';
+          }
         },
-        grid: { color: '#e5e7eb', lineWidth: 1 },
+        grid: { 
+          color: '#e5e7eb', 
+          lineWidth: 1,
+          display: true,
+        },
+        title: {
+          display: true,
+          text: 'Data Points',
+          color: '#666',
+          font: { size: 10 }
+        }
       },
       y: {
         type: 'linear',
         position: 'left',
+        min: yMin,
+        max: yMax,
         ticks: {
-          callback: (value) => `$${Number(value).toLocaleString()}`,
+          callback: (value) => {
+            try {
+              return `$${Number(value).toLocaleString()}`;
+            } catch {
+              return `$${value}`;
+            }
+          },
           color: '#949494',
           font: { size: 12, family: 'Roboto' },
+          maxTicksLimit: 8,
+          precision: 0,
         },
-        grid: { color: '#e5e7eb', lineWidth: 1 },
+        grid: { 
+          color: '#e5e7eb', 
+          lineWidth: 1,
+          display: true,
+        },
       },
     },
     interaction: {
       mode: 'nearest',
       intersect: false,
     },
-  }), []);
+    elements: {
+      point: {
+        radius: 0,
+      },
+    },
+    onHover: (event, elements) => {
+      if (event && event.native && event.native.target) {
+        event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+      }
+    },
+  }), [yMin, yMax, xMin, xMax]);
+
+  // Enhanced error boundary for chart rendering
+  const renderChart = useCallback(() => {
+    try {
+      if (chartError) {
+        return (
+          <div className="flex flex-col items-center justify-center h-full text-red-500 space-y-2">
+            <div>Chart Error: {chartError}</div>
+            <button 
+              onClick={() => {
+                setChartError(null);
+                setChartKey(prev => prev + 1);
+                setForceRerender(prev => prev + 1);
+              }}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              Retry
+            </button>
+          </div>
+        );
+      }
+
+      if (!dataSource || dataSource.length === 0) {
+        return (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            Loading chart data...
+          </div>
+        );
+      }
+
+      if (!isVisible) {
+        return (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            Chart paused (tab not active)
+          </div>
+        );
+      }
+
+      return (
+        <Chart 
+          key={`${chartKey}-${forceRerender}`}
+          ref={chartRef} 
+          type="candlestick" 
+          data={chartData} 
+          options={options}
+          fallbackContent={
+            <div className="flex flex-col items-center justify-center h-full text-red-500 space-y-2">
+              <div>Chart failed to load</div>
+              <button 
+                onClick={() => {
+                  setChartError(null);
+                  setChartKey(prev => prev + 1);
+                }}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Refresh Chart
+              </button>
+            </div>
+          }
+        />
+      );
+    } catch (error) {
+      console.error('Chart rendering error:', error);
+      setChartError(error.message || 'Unknown chart error');
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-red-500 space-y-2">
+          <div>Chart rendering failed</div>
+          <button 
+            onClick={() => {
+              setChartError(null);
+              setChartKey(prev => prev + 1);
+            }}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+  }, [chartKey, forceRerender, chartData, options, dataSource, isVisible, chartError]);
 
   return (
-    <div className="w-full flex-1 bg-gray-50 rounded-[10px] shadow-lg p-6 flex flex-col overflow-hidden">
+    <div ref={containerRef} className="w-full flex-1 bg-gray-50 rounded-[10px] shadow-lg p-6 flex flex-col overflow-hidden">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-800">
-          Financial Chart - {useMockData ? 'Live Mock Data (5s updates)' : 'API Data'}
+          Financial Chart - {useMockData ? 'Live Mock Data (Sequential Updates)' : 'API Data'}
+          {!isVisible && ' - PAUSED'}
         </h3>
+        <p className="text-sm text-gray-600">
+          Real-time price data with automatic scaling ({dataSource.length} data points)
+          {chartError && <span className="text-red-500 ml-2">- Error: {chartError}</span>}
+        </p>
       </div>
       <div className="relative h-[700px] w-full">
-        <Chart ref={chartRef} type="candlestick" data={chartData} options={options} />
+        {renderChart()}
       </div>
     </div>
   );
