@@ -10,11 +10,15 @@ import PositionControl from './components/PositionControl';
 import PositionList from './components/PositionList';
 import OnboardingPromptModal from './components/OnboardingPromptModal';
 import OnboardingTour from './components/OnboardingTour';
+import { OnboardingContainer } from './onboarding';
 import './App.css';
 
 function GameApp() {
   // Get onboarding state to pause timer during onboarding
   const { isOnboardingActive } = useOnboarding();
+  
+  // Track initial onboarding completion
+  const [hasCompletedInitialOnboarding, setHasCompletedInitialOnboarding] = useState(false);
   
   // Connect to live data from DynamoDB
   const { candles, news: liveNewsItems } = useGameData();
@@ -305,6 +309,15 @@ function GameApp() {
     setGameTimer,
     setUserGoal
   };
+
+  const handleCompleteOnboarding = () => {
+    setHasCompletedInitialOnboarding(true);
+  };
+
+  // If initial onboarding is not completed, show onboarding screen
+  if (!hasCompletedInitialOnboarding) {
+    return <OnboardingContainer onComplete={handleCompleteOnboarding} />;
+  }
 
   return (
     <GameContext.Provider value={gameContextValue}>
