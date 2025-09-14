@@ -5,6 +5,10 @@ import { useGameData } from '../hooks/useGameData';
 const MarketNews = ({ demoData }) => {
   const { news } = useGameData();
 
+  const displayNewsItems = useMemo(() => {
+    return [...news];
+  }, [news]);
+
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'high': return 'text-gray-700';
