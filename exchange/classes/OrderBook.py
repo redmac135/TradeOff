@@ -54,6 +54,7 @@ class OrderBook:
             "high": max(prices),
             "low": min(prices),
             "close": prices[-1],
+            "volume": len(prices),
         }
 
         if reset:
