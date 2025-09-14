@@ -3,13 +3,29 @@ import { useGameContext } from '../context/GameContext';
 import { useOnboarding } from '../context/OnboardingContext';
 
 const PositionList = ({ demoData }) => {
-  const { positions, currentMarketPrice, calculatePositionPnL } = useGameContext();
+  const { positions, currentMarketPrice, calculatePositionPnL, gameTimer } = useGameContext();
   const { isDemoMode, getCurrentDemoPrice } = useOnboarding();
   
   // Use demo data if provided, otherwise use real positions
   const displayPositions = demoData || positions;
   const displayPrice = isDemoMode ? getCurrentDemoPrice() : currentMarketPrice;
   
+  // Calculate InvestEase profit based on time
+  const calculateInvestEaseAmount = () => {
+    const level = localStorage.getItem('selectedLevel');
+    let initialAmount;
+    switch(level) {
+      case 'easy': initialAmount = 1000; break;
+      case 'medium': initialAmount = 5000; break;
+      case 'hard': initialAmount = 15000; break;
+      default: initialAmount = 1000;
+    }
+    
+    const targetProfit = initialAmount * 0.1; // 10% target profit
+    const timeProgress = (60 - gameTimer) / 60; // Progress from 0 to 1
+    return targetProfit * timeProgress; // Current profit
+  };
+
   // Simple P&L calculation for demo mode
   const calculateDemoPnL = (position, currentPrice) => {
     const priceChange = currentPrice - position.entryPrice;
@@ -24,12 +40,13 @@ const PositionList = ({ demoData }) => {
   };
 
   if (displayPositions.length === 0) {
+    const currentProfit = calculateInvestEaseAmount();
     return (
       <div className="w-full p-4 bg-gray-50 rounded-lg border border-gray-200">
         <div className="text-center">
           <div className="text-sm text-gray-600 mb-1">Amount made by RBC InvestEase</div>
-          <div className="text-lg font-bold text-gray-600">
-            $0.00
+          <div className="text-lg font-bold text-green-600">
+            {currentProfit.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
       </div>
