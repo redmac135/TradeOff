@@ -404,7 +404,10 @@ const AppContent = () => {
       <OnboardingPromptModal />
       <OnboardingTour />
       <div className="h-screen bg-gray-100 flex flex-col overflow-hidden" data-tour="welcome">
-        <Navbar />
+        <Navbar 
+          demoData={isDemoMode ? demoNewsItems : undefined} 
+          demoMarketData={isDemoMode ? demoMarketData : undefined}
+        />
         
         {/* Hidden element for final tour step */}
         <div data-tour="final" className="sr-only">Final step marker</div>
@@ -412,7 +415,7 @@ const AppContent = () => {
         <main className="flex-1 px-4 py-6 overflow-hidden min-h-0">
           <div className="h-full flex flex-col lg:flex-row gap-6 min-h-0">
             {/* Main Chart Area */}
-            <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
+            <div className="hidden md:flex flex-1 flex-col gap-4 overflow-hidden min-h-0">
               <div className="flex-1 overflow-hidden min-h-0" data-tour="chart">
                 <FinancialChart 
                   useMockData={true} 
@@ -420,14 +423,14 @@ const AppContent = () => {
                   demoData={isDemoMode ? demoMarketData : undefined}
                 />
               </div>
-              <div className="flex-shrink-0 h-24" data-tour="demo-trade">
+              <div className="hidden md:block flex-shrink-0 h-24" data-tour="demo-trade">
                 <PositionControl />
               </div>
             </div>
 
             {/* Sidebar */}
-            <div className="w-full lg:w-96 flex flex-col gap-4 overflow-hidden">
-              <div className="flex-1 overflow-hidden" data-tour="news-feed">
+            <div className="hidden lg:flex w-full lg:w-96 flex-col gap-4 overflow-hidden">
+              <div className="hidden md:block flex-1 overflow-hidden" data-tour="news-feed">
                 <MarketNews demoData={isDemoMode ? demoNewsItems : undefined} />
               </div>
               <div data-tour="positions">

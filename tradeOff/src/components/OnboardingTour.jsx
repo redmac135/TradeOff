@@ -66,9 +66,6 @@ const createOnboardingSteps = () => [
             <span className="text-gray-700"> Bet the price will go DOWN</span>
           </div>
         </div>
-        <p className="text-gray-700">
-          Try clicking "Long" to make your first practice trade!
-        </p>
       </div>
     ),
     position: 'top',
@@ -176,73 +173,6 @@ const createOnboardingSteps = () => [
         </div>
         <p className="text-gray-700">
           The timer doesn't start until you finish this tutorial.
-        </p>
-      </div>
-    ),
-    position: 'bottom',
-  },
-  {
-    selector: '[data-tour="positions"]',
-    content: (
-      <div className="w-full">
-        <h3 className="text-lg font-bold text-gray-900 mb-3">
-          � Your Positions
-        </h3>
-        <p className="text-gray-700 mb-3">
-          This panel shows all your active trades. For each position, you can see:
-        </p>
-        <ul className="text-sm text-gray-700 space-y-1 mb-3">
-          <li>• <strong>Type:</strong> Long (🟢) or Short (🔴)</li>
-          <li>• <strong>Amount:</strong> How much you invested</li>
-          <li>• <strong>P&L:</strong> Your current profit or loss</li>
-          <li>• <strong>Close button:</strong> Exit the trade</li>
-        </ul>
-        <p className="text-gray-700">
-          Close positions anytime to lock in profits or cut losses!
-        </p>
-      </div>
-    ),
-    position: 'left',
-  },
-  {
-    selector: '[data-tour="news"]',
-    content: (
-      <div className="w-full">
-        <h3 className="text-lg font-bold text-gray-900 mb-3">
-          📰 Market News
-        </h3>
-        <p className="text-gray-700 mb-3">
-          Breaking news affects stock prices! Watch for:
-        </p>
-        <ul className="text-sm text-gray-700 space-y-1 mb-3">
-          <li>• <strong>Positive news:</strong> Often pushes prices UP</li>
-          <li>• <strong>Negative news:</strong> Often pushes prices DOWN</li>
-          <li>• <strong>Neutral news:</strong> May have mixed or no effect</li>
-        </ul>
-        <p className="text-gray-700">
-          Read the news to predict which way the market might move!
-        </p>
-      </div>
-    ),
-    position: 'left',
-  },
-  {
-    selector: '[data-tour="portfolio"]',
-    content: (
-      <div className="w-full">
-        <h3 className="text-lg font-bold text-gray-900 mb-3">
-          💰 Portfolio Overview
-        </h3>
-        <p className="text-gray-700 mb-3">
-          Keep track of your trading performance:
-        </p>
-        <ul className="text-sm text-gray-700 space-y-1 mb-3">
-          <li>• <strong>Total Value:</strong> Your cash + position values</li>
-          <li>• <strong>Cash:</strong> Available money for new trades</li>
-          <li>• <strong>P&L:</strong> Total profit/loss from your starting $50k</li>
-        </ul>
-        <p className="text-gray-700">
-          Your goal is to maximize your total portfolio value!
         </p>
       </div>
     ),

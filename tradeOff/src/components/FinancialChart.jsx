@@ -65,7 +65,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       item.h >= item.l && // High should be >= Low
       item.h >= Math.max(item.o, item.c) && // High should be >= Open and Close
       item.l <= Math.min(item.o, item.c) // Low should be <= Open and Close
-    ).slice(-30); // Keep only last 30 for performance
+    ).slice(-50); // Keep last 50 for scrolling capability
 
     // Convert to sequential indexing to avoid gaps
     return validData.map((item, index) => ({
@@ -73,6 +73,11 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       x: index // Use sequential index instead of timestamp
     }));
   }, [useMockData, marketData, apiData, demoData]);
+
+  // Calculate viewport for mobile scrolling
+  const isMobile = window.innerWidth < 768;
+  const visiblePoints = isMobile ? 15 : dataSource.length;
+  const startIndex = isMobile ? Math.max(0, dataSource.length - visiblePoints) : 0;
 
   // Handle page visibility changes (when user switches tabs)
   useEffect(() => {
@@ -168,9 +173,12 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
     }
 
     try {
+      // For mobile, only consider the visible range for Y-axis calculation
+      const dataForYAxis = isMobile ? dataSource.slice(startIndex) : dataSource;
+      
       // Get price ranges with safety checks
-      const allHighs = dataSource.map(d => Number(d.h)).filter(h => !isNaN(h));
-      const allLows = dataSource.map(d => Number(d.l)).filter(l => !isNaN(l));
+      const allHighs = dataForYAxis.map(d => Number(d.h)).filter(h => !isNaN(h));
+      const allLows = dataForYAxis.map(d => Number(d.l)).filter(l => !isNaN(l));
       
       if (allHighs.length === 0 || allLows.length === 0) {
         return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
@@ -192,9 +200,15 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       const yMin = Math.floor((currentMin - padding) / 10) * 10;
       const yMax = Math.ceil((currentMax + padding) / 10) * 10;
       
-      // X-axis: use sequential indexing (0 to length-1) with small buffer
-      const xMin = -1;
-      const xMax = Math.max(dataSource.length, 30);
+      // X-axis: For mobile, show viewport range; for desktop, show all data
+      let xMin, xMax;
+      if (isMobile) {
+        xMin = startIndex - 0.5;
+        xMax = startIndex + visiblePoints - 0.5;
+      } else {
+        xMin = -1;
+        xMax = Math.max(dataSource.length, 30);
+      }
 
       return { yMin, yMax, xMin, xMax };
       
@@ -202,7 +216,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       console.error('Error calculating axis ranges:', error);
       return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
     }
-  }, [dataSource]);
+  }, [dataSource, isMobile, startIndex, visiblePoints]);
 
   // Stable chart data with error handling
   const chartData = useMemo(() => {
@@ -284,174 +298,134 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
     devicePixelRatio: window.devicePixelRatio || 1,
     plugins: {
       legend: { 
-        display: positions.length > 0,
-        position: 'top',
-        labels: {
-          filter: (legendItem) => {
-            // Only show position lines in legend, not OHLC data
-            return legendItem.text && legendItem.text.includes('Entry');
-          },
-          usePointStyle: true,
-          pointStyle: 'line',
-          font: {
-            size: 12,
-          },
-          generateLabels: (chart) => {
-            const original = ChartJS.defaults.plugins.legend.labels.generateLabels;
-            const labels = original.call(this, chart);
-            
-            return labels.map(label => {
-              if (label.text && label.text.includes('Entry')) {
-                // Customize position line labels
-                const position = positions.find(p => 
-                  label.text.includes(p.type.toUpperCase()) && 
-                  label.text.includes(p.entryPrice.toFixed(2))
-                );
-                if (position) {
-                  const profitLoss = calculatePositionPnL(position, currentMarketPrice);
-                  const status = profitLoss >= 0 ? '📈' : '📉';
-                  label.text = `${status} ${position.type.toUpperCase()} @ $${position.entryPrice.toFixed(2)}`;
-                }
-              }
-              return label;
-            });
-          }
-        }
+        display: false, // Hide legend for cleaner look
       },
       tooltip: {
         enabled: true,
-        mode: 'nearest',
+        mode: 'index',
         intersect: false,
-        filter: (tooltipItem) => {
-          // Allow both OHLC data and position lines
-          return tooltipItem && (
-            (tooltipItem.raw && typeof tooltipItem.raw === 'object') || // OHLC data
-            (tooltipItem.parsed && typeof tooltipItem.parsed.y === 'number') // Position lines
-          );
-        },
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderWidth: 1,
+        cornerRadius: 6,
+        displayColors: false,
         callbacks: {
-          title: (context) => {
-            try {
-              if (!context || !context[0]) return 'No data';
-              const dataset = context[0].dataset;
-              
-              // Check if this is a position line
-              if (dataset.label && dataset.label.includes('Entry')) {
-                return dataset.label;
-              }
-              
-              // Regular OHLC data
-              if (!context[0].raw) return 'No data';
-              const dataPoint = context[0].raw;
-              return `Data Point: ${Math.floor(dataPoint.x) + 1}`;
-            } catch {
-              return 'Invalid data point';
-            }
+          title: function(context) {
+            const point = context[0];
+            return `Candle ${point.dataIndex + 1}`;
           },
-          label: (context) => {
-            try {
-              const dataset = context.dataset;
-              
-              // Check if this is a position line
-              if (dataset.label && dataset.label.includes('Entry')) {
-                const price = context.parsed.y;
-                const position = positions.find(p => Math.abs(p.entryPrice - price) < 0.01);
-                if (position) {
-                  const profitLoss = calculatePositionPnL(position, currentMarketPrice);
-                  const profitLossPercent = (profitLoss / position.investment) * 100;
-                  return [
-                    `Entry Price: $${position.entryPrice.toFixed(2)}`,
-                    `Investment: $${position.investment.toLocaleString()}`,
-                    `Current P&L: ${profitLoss >= 0 ? '+' : ''}$${profitLoss.toFixed(2)} (${profitLossPercent.toFixed(1)}%)`,
-                    `Type: ${position.type.toUpperCase()}`
-                  ];
-                }
-                return `Entry Price: $${price.toFixed(2)}`;
-              }
-              
-              // Regular OHLC data
-              if (!context || !context.raw) return 'No data';
-              const dataPoint = context.raw;
-              return [
-                `Open: $${Number(dataPoint.o).toFixed(2)}`,
-                `High: $${Number(dataPoint.h).toFixed(2)}`,
-                `Low: $${Number(dataPoint.l).toFixed(2)}`,
-                `Close: $${Number(dataPoint.c).toFixed(2)}`,
-              ];
-            } catch {
-              return 'Invalid data';
-            }
-          },
-        },
+          label: function(context) {
+            const point = context.raw;
+            return [
+              `Open: $${point.o.toFixed(2)}`,
+              `High: $${point.h.toFixed(2)}`,
+              `Low: $${point.l.toFixed(2)}`,
+              `Close: $${point.c.toFixed(2)}`
+            ];
+          }
+        }
       },
+      // Add zoom plugin for mobile scrolling
+      zoom: isMobile ? {
+        pan: {
+          enabled: true,
+          mode: 'x',
+          modifierKey: null, // Allow panning without modifier key
+          onPanComplete: ({ chart }) => {
+            // Ensure we don't pan beyond data bounds
+            const xScale = chart.scales.x;
+            const dataLength = dataSource.length;
+            
+            if (xScale.min < -1) {
+              xScale.options.min = -1;
+              chart.update('none');
+            }
+            if (xScale.max > dataLength) {
+              xScale.options.max = dataLength;
+              chart.update('none');
+            }
+          }
+        },
+        zoom: {
+          wheel: {
+            enabled: false, // Disable zoom to prevent accidental zooming
+          },
+          pinch: {
+            enabled: false, // Disable pinch zoom
+          }
+        }
+      } : undefined,
     },
     scales: {
       x: {
-        type: 'linear', // Changed from 'time' to 'linear'
+        type: 'linear',
+        position: 'bottom',
         min: xMin,
         max: xMax,
+        grid: {
+          display: true,
+          color: 'rgba(0, 0, 0, 0.05)',
+          lineWidth: 1,
+        },
         ticks: {
-          color: '#949494',
-          font: { size: 12, family: 'Roboto' },
-          maxTicksLimit: 10,
-          autoSkip: true,
+          display: isMobile ? true : false, // Show x-axis labels on mobile for reference
+          maxTicksLimit: isMobile ? 8 : 6,
+          color: '#6b7280',
+          font: {
+            size: window.innerWidth < 768 ? 10 : 12,
+          },
           callback: function(value) {
-            // Show cleaner tick labels (every few points)
-            return Math.floor(value) % 5 === 0 ? `${Math.floor(value)}` : '';
+            // Show every few ticks for readability
+            return Math.floor(value) % (isMobile ? 2 : 5) === 0 ? Math.floor(value) : '';
           }
         },
-        grid: { 
-          color: '#e5e7eb', 
-          lineWidth: 1,
-          display: true,
-        },
-        title: {
-          display: true,
-          text: 'Data Points',
-          color: '#666',
-          font: { size: 10 }
+        border: {
+          display: false,
         }
       },
       y: {
         type: 'linear',
-        position: 'left',
+        position: 'right',
         min: yMin,
         max: yMax,
-        ticks: {
-          callback: (value) => {
-            try {
-              return `$${Number(value).toLocaleString()}`;
-            } catch {
-              return `$${value}`;
-            }
-          },
-          color: '#949494',
-          font: { size: 12, family: 'Roboto' },
-          maxTicksLimit: 8,
-          precision: 0,
-        },
-        grid: { 
-          color: '#e5e7eb', 
-          lineWidth: 1,
+        grid: {
           display: true,
+          color: 'rgba(0, 0, 0, 0.1)',
+          lineWidth: 1,
         },
+        ticks: {
+          maxTicksLimit: window.innerWidth < 768 ? 4 : 6,
+          color: '#6b7280',
+          font: {
+            size: window.innerWidth < 768 ? 10 : 12,
+          },
+          callback: function(value) {
+            return '$' + value.toLocaleString();
+          }
+        },
+        border: {
+          display: false,
+        }
       },
-    },
-    interaction: {
-      mode: 'nearest',
-      intersect: false,
     },
     elements: {
       point: {
         radius: 0,
+        hoverRadius: 4,
       },
+    },
+    interaction: {
+      intersect: false,
+      mode: 'index',
     },
     onHover: (event, elements) => {
       if (event && event.native && event.native.target) {
         event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
       }
     },
-  }), [yMin, yMax, xMin, xMax, positions, currentMarketPrice, calculatePositionPnL]);
+  }), [yMin, yMax, xMin, xMax, isMobile, dataSource.length]);
 
   // Enhanced error boundary for chart rendering
   const renderChart = useCallback(() => {
@@ -534,19 +508,22 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   }, [chartKey, forceRerender, chartData, options, dataSource, isVisible, chartError]);
 
   return (
-    <div ref={containerRef} className="w-full flex-1 bg-gray-50 rounded-[10px] shadow-lg p-6 flex flex-col overflow-hidden">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">
-          Financial Chart - {useMockData ? 'Live Mock Data (Sequential Updates)' : 'API Data'}
-          {!isVisible && ' - PAUSED'}
-        </h3>
-        <p className="text-sm text-gray-600">
-          Real-time price data with automatic scaling ({dataSource.length} data points)
-          {chartError && <span className="text-red-500 ml-2">- Error: {chartError}</span>}
-        </p>
-      </div>
-      <div className="relative h-[700px] w-full">
-        {renderChart()}
+    <div ref={containerRef} className="w-full flex-1 bg-gray-50 rounded-[10px] shadow-lg flex flex-col overflow-hidden relative">
+      
+      {/* Scroll hint for mobile */}
+      {isMobile && dataSource.length > visiblePoints && (
+        <div className="absolute bottom-2 right-2 z-10">
+          <div className="px-2 py-1 bg-black/50 rounded text-white text-xs">
+            ← Swipe to scroll →
+          </div>
+        </div>
+      )}
+      
+      {/* Chart Container */}
+      <div className={`relative h-48 md:h-64 lg:h-80 xl:h-96 w-full p-2 md:p-4 ${isMobile ? 'overflow-x-auto overflow-y-hidden' : ''}`}>
+        <div className={isMobile ? 'w-[200%] h-full' : 'w-full h-full'}>
+          {renderChart()}
+        </div>
       </div>
     </div>
   );
