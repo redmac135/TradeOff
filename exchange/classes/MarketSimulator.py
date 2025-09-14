@@ -62,7 +62,7 @@ class MarketSimulator:
                 continue
 
             # Use last traded price or fallback to base
-            last_price = self.order_book.get_prev_close() or self.base_price
+            last_price = self.order_book.get_last_price() or self.base_price
 
             # Liquidity pressure toward base price
             deviation = (last_price - self.base_price) / self.base_price
@@ -72,18 +72,21 @@ class MarketSimulator:
             # Momentum effect (slight bias if last candle up/down)
             prev_close = self.order_book.get_prev_close() or last_price
             if last_price > prev_close:
-                buy_prob += 0.15  # tilt upward momentum
+                buy_prob += 0.05  # tilt upward momentum
             else:
-                buy_prob -= 0.15  # tilt downward momentum
+                buy_prob -= 0.05  # tilt downward momentum
 
             # Liquidity reversion (push back toward base)
-            buy_prob -= deviation * 0.2  # stronger deviation = stronger push back
+            buy_prob -= deviation * 2  # stronger deviation = stronger push back
+
+            # sentiment effect
+            buy_prob += sentiment_snapshot * SENTIMENT_IMPACT
 
             # Clamp to keep probabilities sane
             buy_prob = max(0.1, min(0.9, buy_prob))
 
-            # Generate orders
-            num_orders = random.randint(50, 100)
+            # Generate orders based on severity of sentiment
+            num_orders = random.randint(25, 50) * int(1 + abs(sentiment_snapshot) * 3)
             spread = 0.01  # +/-1% around last price
 
             for _ in range(num_orders):
@@ -169,6 +172,9 @@ class MarketSimulator:
                         break
                     # increment the canonical candle index
                     self.candle_count += 1
+
+                    # move the sentiment slightly toward 0 (decay)
+                    self.sentiment *= 0.80
 
                 # broadcast tick to workers
                 # workers snapshot the candle_count themselves
