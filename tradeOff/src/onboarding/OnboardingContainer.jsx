@@ -19,9 +19,18 @@ const OnboardingContainer = ({ onComplete }) => {
     setCurrentStep('confirmation');
   };
 
-  const handleLetsPlay = () => {
+  const handleLetsPlay = (riskTolerance) => {
+    // Store risk tolerance in localStorage for now and forward to onComplete
+    try {
+      if (typeof riskTolerance === 'number') {
+        localStorage.setItem('riskTolerance', String(riskTolerance));
+      }
+    } catch {
+      // ignore storage errors
+    }
+
     // Complete the onboarding after confirmation
-    onComplete();
+    onComplete(riskTolerance);
   };
 
   const renderCurrentStep = () => {

@@ -5,6 +5,10 @@ import { GraduationCap, Car, Home } from 'lucide-react';
 
 const OnboardingConfirmation = ({ onLetsPlay }) => {
   const [selectedLevel, setSelectedLevel] = useState(null);
+  const [riskTolerance, setRiskTolerance] = useState(() => {
+    const stored = localStorage.getItem('riskTolerance');
+    return stored ? Number(stored) : 50;
+  });
 
   useEffect(() => {
     // Get the selected level from localStorage
@@ -49,7 +53,8 @@ const OnboardingConfirmation = ({ onLetsPlay }) => {
     button.style.opacity = '0.8';
     
     setTimeout(() => {
-      onLetsPlay();
+      // Pass selected risk tolerance to parent
+      onLetsPlay(riskTolerance);
     }, 150);
   };
 
@@ -96,6 +101,23 @@ const OnboardingConfirmation = ({ onLetsPlay }) => {
                 Start with <span className="text-amber-500 font-semibold">{selectedLevel.startingAmount}</span> {selectedLevel.description}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Risk tolerance slider (title + control) */}
+        <div className="w-96 flex flex-col justify-start items-start gap-2">
+          <div className="justify-start text-700 text-lg font-semibold font-['Lato']">Risk Tolerance</div>
+          <div className="w-full flex items-center gap-3">
+            <input
+              aria-label="Risk tolerance slider"
+              type="range"
+              min="0"
+              max="100"
+              value={riskTolerance}
+              onChange={(e) => setRiskTolerance(Number(e.target.value))}
+              className="w-full"
+            />
+            <div className="text-600 text-sm font-medium w-14 text-center">{riskTolerance}%</div>
           </div>
         </div>
 

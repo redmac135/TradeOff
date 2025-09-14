@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback } from 'react';
 
 const OnboardingContext = createContext();
@@ -19,7 +20,10 @@ export const OnboardingProvider = ({ children }) => {
   // Mock demo data for onboarding
   const [demoMarketData, setDemoMarketData] = useState([]);
   const [demoNewsItems, setDemoNewsItems] = useState([]);
-  const [demoCash, setDemoCash] = useState(50000);
+  const [demoCash, setDemoCash] = useState(() => {
+    const stored = Number(localStorage.getItem('startingCash'));
+    return Number.isFinite(stored) && stored > 0 ? stored : 50000;
+  });
   const [demoPositions, setDemoPositions] = useState([]);
 
   const initializeDemoMarketData = useCallback(() => {
@@ -80,7 +84,10 @@ export const OnboardingProvider = ({ children }) => {
     setCurrentOnboardingStep(0);
     
   // Initialize demo data - read starting cash from onboarding/localStorage
-  const storedCash = Number(localStorage.getItem('startingCash')) || 50000;
+  const storedCash = (() => {
+    const n = Number(localStorage.getItem('startingCash'));
+    return Number.isFinite(n) && n > 0 ? n : 50000;
+  })();
   setDemoCash(storedCash);
     setDemoPositions([]);
     initializeDemoMarketData();
@@ -171,7 +178,8 @@ export const OnboardingProvider = ({ children }) => {
   }, [isDemoMode, demoCash, demoMarketData]);
 
   const resetDemo = useCallback(() => {
-    setDemoCash(50000);
+  const stored = Number(localStorage.getItem('startingCash'));
+  setDemoCash(Number.isFinite(stored) && stored > 0 ? stored : 50000);
     setDemoPositions([]);
     initializeDemoMarketData();
     initializeDemoNews();

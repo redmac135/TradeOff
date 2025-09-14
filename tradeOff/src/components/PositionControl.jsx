@@ -253,7 +253,7 @@ const PositionControl = () => {
           
           {/* Cash Position and Total P&L Section - Top */}
           <div className="self-stretch inline-flex flex-col justify-start items-start gap-2">
-            <div className="self-stretch inline-flex justify-between items-center">
+            <div className="self-stretch inline-flex justify-between items-center" data-tour="cash">
               <div className="justify-start text-blue-600 text-lg font-normal font-['Lato']">Cash Position</div>
               <div className="justify-center text-gray-800 text-2xl font-bold font-['Lato']">${displayCash.toLocaleString()}</div>
             </div>

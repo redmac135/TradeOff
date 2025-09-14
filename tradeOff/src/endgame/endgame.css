@@ -1,0 +1,43 @@
+/* Endgame overlay styles */
+.endgame-overlay {
+  pointer-events: none; /* overlay is visual only; parent can decide interactivity */
+}
+
+/* Expanding ripple from center */
+.endgame-ripple {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+.endgame-ripple::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #0662AC; /* RBC blue */
+  transform: translate(-50%, -50%) scale(1);
+  filter: blur(10px);
+  will-change: transform, opacity, filter;
+  animation: endgame-expand 1400ms cubic-bezier(.22,1,.36,1) forwards;
+}
+
+@keyframes endgame-expand {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    filter: blur(6px);
+  }
+  60% {
+    transform: translate(-50%, -50%) scale(220);
+    opacity: 1;
+    filter: blur(8px);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(420);
+    opacity: 1;
+    filter: blur(10px);
+  }
+}

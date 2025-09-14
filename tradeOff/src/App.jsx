@@ -11,6 +11,8 @@ import PositionControl from './components/PositionControl';
 import PositionList from './components/PositionList';
 import OnboardingTour from './components/OnboardingTour';
 import { OnboardingContainer } from './onboarding';
+import EndgameOverlay from './endgame/EndgameOverlay';
+import EndgameResults from './endgame/EndgameResults';
 import './App.css';
 
 function GameApp() {
@@ -26,14 +28,24 @@ function GameApp() {
   const { candles, news: liveNewsItems } = useGameData(liveDataEnabled);
   
   // Centralized State Management
-  const [cash, setCash] = useState(50000); // Starting cash
+  const [cash, setCash] = useState(() => {
+    const stored = Number(localStorage.getItem('startingCash'));
+    return Number.isFinite(stored) && stored > 0 ? stored : 50000;
+  }); // Starting cash from onboarding
   const [positions, setPositions] = useState([]); // Array of open trades
   const [marketData, setMarketData] = useState([]); // Chart data
   const [newsItems, setNewsItems] = useState([]); // News headlines
-  const [gameTimer, setGameTimer] = useState(180); // 180 seconds countdown
+  const [gameTimer, setGameTimer] = useState(180); // 180 seconds = 3 minutes countdown
   const [userGoal, setUserGoal] = useState({ name: 'First Car', amount: 15000 }); // User goal
   const [isPageVisible, setIsPageVisible] = useState(true); // Track page visibility
   const [realizedPnL, setRealizedPnL] = useState(0); // Track realized P&L from closed positions
+  const [showEndgame, setShowEndgame] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  // Risk tolerance (0-100) - initialized from localStorage if available
+  const [riskTolerance, setRiskTolerance] = useState(() => {
+    const stored = localStorage.getItem('riskTolerance');
+    return stored ? Number(stored) : 50;
+  });
 
   // Sync live data from DynamoDB to local state for trading
   useEffect(() => {
@@ -243,12 +255,18 @@ function GameApp() {
 
   // Game timer countdown (pause when page is not visible or during onboarding)
   useEffect(() => {
+    // Do not start the timer at all until the initial onboarding prompt is dismissed
+    // and any tutorial is finished (user either completed onboarding or skipped it).
     if (gameTimer <= 0) return;
+    if (showInitialPrompt || isOnboardingActive) {
+      // No interval created while onboarding prompt is visible or tutorial active
+      return;
+    }
 
     const timer = setInterval(() => {
-      // Only countdown when page is visible and not in onboarding
-      if (!isPageVisible || isOnboardingActive) {
-        console.log('Timer paused - page not visible or onboarding active');
+      // Only countdown when page is visible
+      if (!isPageVisible) {
+        console.log('Timer paused - page not visible');
         return;
       }
 
@@ -262,7 +280,30 @@ function GameApp() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameTimer, isPageVisible, isOnboardingActive]);
+  }, [gameTimer, isPageVisible, isOnboardingActive, showInitialPrompt]);
+  // Trigger endgame overlay when timer hits 0
+  useEffect(() => {
+    if (gameTimer === 0) {
+      setShowEndgame(true);
+    }
+  }, [gameTimer]);
+
+  // When the endgame overlay is shown, automatically switch to results after 5 seconds
+  useEffect(() => {
+    if (!showEndgame) return;
+    const t = setTimeout(() => {
+      setShowEndgame(false);
+      setShowResults(true);
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [showEndgame]);
+
+  // When tutorial (onboarding tour) ends, reset timer back to 3 minutes
+  useEffect(() => {
+    if (!isOnboardingActive) {
+  setGameTimer(180);
+    }
+  }, [isOnboardingActive]);
 
   // Simulate occasional news updates
   useEffect(() => {
@@ -310,9 +351,35 @@ function GameApp() {
     setNewsItems,
     setGameTimer,
     setUserGoal
+  ,
+  // Risk tolerance accessors
+  riskTolerance,
+  setRiskTolerance
   };
 
-  const handleCompleteOnboarding = () => {
+  const handleCompleteOnboarding = (onboardRiskTolerance) => {
+    // Apply the onboarding-selected starting cash to the live game
+    const stored = Number(localStorage.getItem('startingCash'));
+    if (Number.isFinite(stored) && stored > 0) {
+      setCash(stored);
+    }
+
+    // If onboarding passed a risk tolerance, use it and persist it
+    if (typeof onboardRiskTolerance === 'number') {
+      setRiskTolerance(onboardRiskTolerance);
+      try {
+        localStorage.setItem('riskTolerance', String(onboardRiskTolerance));
+      } catch {
+        // ignore storage errors
+      }
+    } else {
+      // Otherwise fallback to any stored value
+      const storedRisk = localStorage.getItem('riskTolerance');
+      if (storedRisk) {
+        setRiskTolerance(Number(storedRisk));
+      }
+    }
+
     setHasCompletedInitialOnboarding(true);
   };
 
@@ -324,8 +391,10 @@ function GameApp() {
   return (
     <GameContext.Provider value={gameContextValue}>
       {/* Landing overlay that blocks interaction and live data until dismissed */}
-      <TrainingLanding />
-      <AppContent />
+      {!showResults && <TrainingLanding />}
+      {!showResults && <AppContent />}
+  {showEndgame && <EndgameOverlay />}
+      {showResults && <EndgameResults />}
     </GameContext.Provider>
   );
 }

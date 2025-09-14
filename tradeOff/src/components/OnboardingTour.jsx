@@ -5,23 +5,23 @@ import { useOnboarding } from '../context/OnboardingContext';
 // Reusable blue card for tour content
 const BlueTourCard = ({ title, description, nextLabel = 'Next', onNext, onBack, showBack }) => (
   <div
-    className="w-[498px] max-w-[92vw] px-6 py-7 md:py-9 relative rounded-[10px] inline-flex flex-col justify-start items-stretch gap-6"
+    className="w-[360px] sm:w-[420px] md:w-[498px] max-w-[88vw] sm:max-w-[90vw] md:max-w-[92vw] px-4 py-4 md:px-6 md:py-7 relative rounded-[10px] inline-flex flex-col justify-start items-stretch gap-4 md:gap-6"
     style={{ backgroundColor: '#005DAA' }}
   >
-    <div className="text-white text-2xl md:text-3xl font-semibold font-['Lato']">{title}</div>
-    <div className="text-white text-xl md:text-2xl font-light font-['Roboto_Flex'] leading-8 md:leading-9">{description}</div>
-    <div className="flex items-center justify-end gap-3">
+    <div className="text-white text-lg sm:text-xl md:text-3xl font-semibold font-['Lato']">{title}</div>
+    <div className="text-white text-base sm:text-lg md:text-2xl font-light font-['Roboto_Flex'] leading-6 sm:leading-7 md:leading-9">{description}</div>
+    <div className="flex items-center justify-end gap-2 md:gap-3">
       {showBack && (
         <button
           onClick={onBack}
-          className="w-28 px-3 py-2 rounded-[10px] inline-flex justify-center items-center bg-white/10 text-white hover:bg-white/20 transition text-base font-['Roboto_Flex']"
+          className="w-24 md:w-28 px-3 py-2 rounded-[10px] inline-flex justify-center items-center bg-white/10 text-white hover:bg-white/20 transition text-sm md:text-base font-['Roboto_Flex']"
         >
           Back
         </button>
       )}
       <button
         onClick={onNext}
-        className="w-32 px-3 py-2 rounded-[10px] inline-flex justify-center items-center bg-white text-[#015FA9] hover:opacity-95 active:scale-[0.98] transition text-lg font-['Roboto_Flex']"
+        className="w-28 md:w-32 px-3 py-2 rounded-[10px] inline-flex justify-center items-center bg-white text-[#015FA9] hover:opacity-95 active:scale-[0.98] transition text-base md:text-lg font-['Roboto_Flex']"
       >
         {nextLabel}
       </button>
@@ -57,10 +57,11 @@ const BlueCardStep = ({ title, description, nextLabel = 'Next', isFinal = false,
 
 // Define requested onboarding steps in order
 const createOnboardingSteps = ({ getStartingCash, complete }) => {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   return [
     {
       selector: '[data-tour="timer"]',
-      position: 'right',
+      position: isMobile ? 'bottom' : 'right',
       content: (
         <BlueCardStep
           title="The Clock is Ticking"
@@ -70,7 +71,7 @@ const createOnboardingSteps = ({ getStartingCash, complete }) => {
     },
     {
       selector: '[data-tour="cash"]',
-      position: 'left',
+      position: isMobile ? 'top' : 'left',
       content: (
         <BlueCardStep
           title="Your Starting Balance"
@@ -119,8 +120,8 @@ const createOnboardingSteps = ({ getStartingCash, complete }) => {
       ),
     },
     {
-      selector: '[data-tour="pnl"]',
-      position: 'left',
+  selector: '[data-tour="pnl-mobile"], [data-tour="pnl"]',
+  position: isMobile ? 'top' : 'left',
       content: (
         <BlueCardStep
           title="Track Your Performance"
@@ -190,8 +191,11 @@ const OnboardingTour = () => {
           ...base,
           '--reactour-accent': '#2563eb',
           borderRadius: 12,
-          // Use default anchored positioning
-          position: 'absolute',
+          // Center the card on screen regardless of anchor
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
           minWidth: '280px',
           maxWidth: 'min(520px, calc(100vw - 24px))',
           maxHeight: 'calc(100vh - 24px)',

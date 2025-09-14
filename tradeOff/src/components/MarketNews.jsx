@@ -9,8 +9,14 @@ const MarketNews = ({ demoData }) => {
   const { news } = useGameData(liveEnabled);
 
   const displayNewsItems = useMemo(() => {
-    if (isDemoMode && Array.isArray(demoData)) return [...demoData];
-    return [...news];
+    // Prefer provided demo data during onboarding, otherwise live news
+    const source = (isDemoMode && Array.isArray(demoData)) ? demoData : news;
+    const normalize = (item) => ({
+      title: item?.title ?? item?.Headline ?? '',
+      description: item?.description ?? item?.Summary ?? '',
+      priority: item?.priority ?? item?.Priority ?? 'medium',
+    });
+    return Array.isArray(source) ? source.map(normalize) : [];
   }, [news, isDemoMode, demoData]);
 
   const getPriorityColor = (priority) => {
@@ -37,11 +43,11 @@ const MarketNews = ({ demoData }) => {
             <div key={index} className="w-full flex flex-col justify-start items-start gap-2">
               <div className="w-full flex justify-start items-start gap-3">
                 <div className={`text-lg font-medium font-['Roboto_Flex'] ${getPriorityColor(item.priority)}`}>
-                  {item.Headline}
+                  {item.title}
                 </div>
               </div>
               <div className={`w-full text-sm font-normal font-['Roboto_Flex'] ${getPriorityColor(item.priority)}`}>
-                {item.Summary}
+                {item.description}
               </div>
             </div>
           ))}
