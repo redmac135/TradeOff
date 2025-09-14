@@ -41,6 +41,13 @@ function GameApp() {
   const [realizedPnL, setRealizedPnL] = useState(0); // Track realized P&L from closed positions
   const [showEndgame, setShowEndgame] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  
+  // Track InvestEase amount that grows over time
+  const [investEaseAmount, setInvestEaseAmount] = useState(() => {
+    const startingCash = Number(localStorage.getItem('startingCash')) || 50000;
+    return startingCash; // Start with initial amount
+  });
+  
   // Risk tolerance (0-100) - initialized from localStorage if available
   const [riskTolerance, setRiskTolerance] = useState(() => {
     const stored = localStorage.getItem('riskTolerance');
@@ -322,9 +329,23 @@ function GameApp() {
   // When tutorial (onboarding tour) ends, reset timer back to 3 minutes
   useEffect(() => {
     if (!isOnboardingActive) {
-  setGameTimer(180);
+      setGameTimer(180);
+      // Reset InvestEase amount when game starts
+      const startingCash = Number(localStorage.getItem('startingCash')) || 50000;
+      setInvestEaseAmount(startingCash);
     }
   }, [isOnboardingActive]);
+
+  // Update InvestEase amount gradually as time passes
+  useEffect(() => {
+    if (gameTimer <= 180 && gameTimer >= 0) {
+      const startingCash = Number(localStorage.getItem('startingCash')) || 50000;
+      const maxGrowth = startingCash * 0.1; // 10% growth target
+      const timeProgress = (180 - gameTimer) / 180; // Progress from 0 to 1
+      const currentGrowth = maxGrowth * timeProgress;
+      setInvestEaseAmount(startingCash + currentGrowth);
+    }
+  }, [gameTimer]);
 
   // Simulate occasional news updates
   useEffect(() => {
@@ -356,8 +377,9 @@ function GameApp() {
     userGoal,
     currentMarketPrice,
     totalEquity,
-  totalPnL,
-  realizedPnL,
+    totalPnL,
+    realizedPnL,
+    investEaseAmount,
     
     // Actions
     handleTrade,
@@ -476,6 +498,14 @@ const AppContent = () => {
               </div>
               <div data-tour="pnl">
                 <Card title="Your Total P&L" value={displayData.totalPnL} type="cash" />
+              </div>
+              <div>
+                <Card 
+                  title="InvestEase Portfolio" 
+                  value={isDemoMode ? demoCash : gameContext.investEaseAmount} 
+                  type="cash"
+                  style={{ backgroundColor: '#005DAA', color: 'white' }}
+                />
               </div>
             </div>
           </div>

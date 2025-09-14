@@ -4,7 +4,7 @@ import RbcWhite from '../assets/RBC White.svg';
 
 // Full-screen results view shown after the endgame overlay
 const EndgameResults = () => {
-  const { totalPnL } = useGameContext();
+  const { totalPnL, investEaseAmount } = useGameContext();
 
   const { isLoss, label, amountAbs } = useMemo(() => {
     const isLossVal = (Number(totalPnL) || 0) < 0;
@@ -15,9 +15,6 @@ const EndgameResults = () => {
       amountAbs: Math.abs(amt),
     };
   }, [totalPnL]);
-
-  // Placeholder for InvestEase number until API integration
-  const investEaseAmount = null; // TODO: Replace with API result when available
 
   return (
     <div className= "min-h-screen w-full flex flex-col lg:flex-row" style={{ backgroundColor: '#015FA9' }}>
