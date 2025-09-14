@@ -1,5 +1,6 @@
 # create_tables.py
 import boto3
+import uuid
 from botocore.exceptions import ClientError
 
 def create_tables():
@@ -10,29 +11,27 @@ def create_tables():
         {
             'TableName': 'OHLCV',
             'KeySchema': [
-                {'AttributeName': 'Asset', 'KeyType': 'HASH'},  # Partition key
-                {'AttributeName': 'Timestamp', 'KeyType': 'RANGE'}  # Sort key
+                {'AttributeName': 'ID', 'KeyType': 'HASH'}  # Primary key
             ],
             'AttributeDefinitions': [
-                {'AttributeName': 'Asset', 'AttributeType': 'S'},
-                {'AttributeName': 'Timestamp', 'AttributeType': 'N'}
+                {'AttributeName': 'ID', 'AttributeType': 'S'}
             ],
             'BillingMode': 'PAY_PER_REQUEST'
         },
         {
             'TableName': 'News',
             'KeySchema': [
-                {'AttributeName': 'Time', 'KeyType': 'HASH'}  # Partition key
+                {'AttributeName': 'ID', 'KeyType': 'HASH'}  # Primary key
             ],
             'AttributeDefinitions': [
-                {'AttributeName': 'Time', 'AttributeType': 'N'}
+                {'AttributeName': 'ID', 'AttributeType': 'S'}
             ],
             'BillingMode': 'PAY_PER_REQUEST'
         },
         {
             'TableName': 'Player',
             'KeySchema': [
-                {'AttributeName': 'ID', 'KeyType': 'HASH'}  # Partition key
+                {'AttributeName': 'ID', 'KeyType': 'HASH'}  # Primary key
             ],
             'AttributeDefinitions': [
                 {'AttributeName': 'ID', 'AttributeType': 'S'}
@@ -42,7 +41,7 @@ def create_tables():
         {
             'TableName': 'Status',
             'KeySchema': [
-                {'AttributeName': 'ID', 'KeyType': 'HASH'}  # Partition key
+                {'AttributeName': 'ID', 'KeyType': 'HASH'}  # Primary key
             ],
             'AttributeDefinitions': [
                 {'AttributeName': 'ID', 'AttributeType': 'S'}
@@ -64,6 +63,6 @@ def create_tables():
                 print(f"❌ Error creating table {table_config['TableName']}: {e}")
 
 if __name__ == '__main__':
-    print("��️ Creating DynamoDB tables...")
+    print("️ Creating DynamoDB tables...")
     create_tables()
-    print("🎉 Done! All tables are ready.")
+    print(" Done! All tables are ready.")
