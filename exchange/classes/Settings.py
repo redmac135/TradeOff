@@ -1,7 +1,7 @@
 CANDLE_PERIOD = 1 / 3
 NEWS_PERIOD = 15
 INITIAL_SENTIMENT = 0.0
-BOT_ORDER_SPREAD_PERCENT = 3.0 # place orders +/- 1% around true price
+BOT_ORDER_SPREAD_PERCENT = 1.0 # place orders +/- 1% around true price
 SENTIMENT_IMPACT = 1.0
 GROWTH_RATE = 0.001  # 0.1% per tick
 BASE_PRICE = 100.0

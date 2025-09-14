@@ -1,6 +1,7 @@
 import heapq
 from typing import List
 from .Order import Order
+from .Settings import BASE_PRICE
 
 class OrderBook:
     def __init__(self):
@@ -9,6 +10,7 @@ class OrderBook:
         self.sell_orders: List[tuple] = []
         self.trades: List[float] = []  # list of trade prices
         self.current_candle: List[float] = []
+        self.last_candle = None
         self.next_order_id = 0
 
     def add_order(self, side: str, price: float):
@@ -43,10 +45,19 @@ class OrderBook:
             else:
                 break
 
+
+    def get_prev_close(self):
+        """Return last trade price, or None if no trades yet."""
+        if self.trades:
+            return self.trades[-1]
+        if self.last_candle:
+            return self.last_candle["close"]
+        return BASE_PRICE
+
     def get_candle(self, reset=True):
         """Return OHLC for current trades in interval."""
         if not self.current_candle:
-            return None
+            return self.last_candle
 
         prices = self.current_candle
         candle = {
@@ -59,5 +70,6 @@ class OrderBook:
 
         if reset:
             self.current_candle = [prices[-1]]
+            self.last_candle = candle
 
         return candle
