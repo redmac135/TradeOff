@@ -1,13 +1,17 @@
 import React, { useMemo } from 'react';
 import { Newspaper } from 'lucide-react';
+import { useOnboarding } from '../context/OnboardingContext';
 import { useGameData } from '../hooks/useGameData';
 
 const MarketNews = ({ demoData }) => {
-  const { news } = useGameData();
+  const { isDemoMode, showInitialPrompt } = useOnboarding();
+  const liveEnabled = !isDemoMode && !showInitialPrompt;
+  const { news } = useGameData(liveEnabled);
 
   const displayNewsItems = useMemo(() => {
+    if (isDemoMode && Array.isArray(demoData)) return [...demoData];
     return [...news];
-  }, [news]);
+  }, [news, isDemoMode, demoData]);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -20,8 +24,8 @@ const MarketNews = ({ demoData }) => {
 
   return (
     <>
-      {/* Desktop Layout */}
-      <div className="hidden md:flex w-full h-full p-6 relative bg-gray-50 rounded-[10px] shadow-[4px_4px_20px_0px_rgba(0,0,0,0.05)] flex-col gap-2.5 overflow-hidden">
+  {/* Desktop Layout */}
+  <div className="hidden md:flex w-full h-full p-6 relative bg-gray-50 rounded-[10px] shadow-[4px_4px_20px_0px_rgba(0,0,0,0.05)] flex-col gap-2.5 overflow-hidden" data-tour="news-feed news-primary">
         <div className="text-blue-600 text-4xl font-normal font-['Lato'] flex-shrink-0 flex items-center gap-3">
           <Newspaper className="text-blue-600" size={36} />
           <span>News Feed</span>
@@ -47,8 +51,8 @@ const MarketNews = ({ demoData }) => {
         <div className="absolute bottom-0 left-0 w-full h-28 bg-gradient-to-t from-gray-50 to-transparent pointer-events-none"></div>
       </div>
 
-      {/* Mobile Layout */}
-      <div className="md:hidden w-96 h-40 relative">
+  {/* Mobile Layout */}
+  <div className="md:hidden w-96 h-40 relative" data-tour="news-feed news-primary">
         {/* Background cards for stacked effect - positioned to look like cards underneath */}
         <div className="w-96 h-28 p-4 left-[12px] top-[28px] absolute bg-gray-100 rounded-lg shadow-[2px_2px_12px_0px_rgba(0,0,0,0.08)] transform rotate-[1deg]" />
         <div className="w-96 h-28 p-4 left-[8px] top-[22px] absolute bg-gray-200 rounded-lg shadow-[3px_3px_15px_0px_rgba(0,0,0,0.12)] transform rotate-[-0.5deg]" />

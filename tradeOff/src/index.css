@@ -21,35 +21,25 @@ body {
 
 /* Core popover positioning - overrides library defaults completely */
 [data-tour-elem="popover"] {
-	/* Essential styling */
+	/* Keep high stacking but let library position it */
 	z-index: 99999 !important;
-	background: white !important;
-	border: 1px solid rgba(0, 0, 0, 0.1) !important;
-	box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+	background: transparent !important; /* Blue card handles background */
+	border: none !important;
+	box-shadow: none !important;
 	border-radius: 12px !important;
-	
-	/* CRITICAL: Force fixed positioning to bypass library positioning issues */
-	position: fixed !important;
-	
-	/* Responsive sizing with proper constraints */
+
+	/* Do NOT force position/transform; allow Reactour to place it */
 	width: auto !important;
 	min-width: 280px !important;
-	max-width: min(480px, calc(100vw - 40px)) !important;
+	max-width: min(520px, calc(100vw - 24px)) !important;
 	max-height: calc(100vh - 80px) !important;
-	
-	/* Ensure content is accessible */
+
 	box-sizing: border-box !important;
-	overflow-y: auto !important;
-	overflow-x: hidden !important;
-	
-	/* Prevent any transform interference */
-	transform: none !important;
-	
-	/* Add padding for better mobile experience */
-	padding: 20px !important;
-	
-	/* Smooth visual transition */
-	opacity: 0.9 !important;
+	overflow-y: visible !important;
+	overflow-x: visible !important;
+
+	padding: 0 !important; /* Card has its own padding */
+	opacity: 1 !important;
 	visibility: visible !important;
 }
 
@@ -113,8 +103,8 @@ body {
 /* Large tablets and small desktops */
 @media (max-width: 1024px) {
 	[data-tour-elem="popover"] {
-		max-width: min(420px, calc(100vw - 32px)) !important;
-		padding: 18px !important;
+		max-width: min(480px, calc(100vw - 24px)) !important;
+		padding: 0 !important;
 	}
 }
 
@@ -124,7 +114,7 @@ body {
 		min-width: 260px !important;
 		max-width: calc(100vw - 24px) !important;
 		max-height: calc(100vh - 60px) !important;
-		padding: 16px !important;
+		padding: 0 !important;
 		font-size: 15px !important;
 	}
 }
@@ -135,7 +125,7 @@ body {
 		min-width: 240px !important;
 		max-width: calc(100vw - 20px) !important;
 		max-height: calc(100vh - 50px) !important;
-		padding: 14px !important;
+		padding: 0 !important;
 		font-size: 14px !important;
 	}
 }
@@ -146,7 +136,7 @@ body {
 		min-width: 220px !important;
 		max-width: calc(100vw - 16px) !important;
 		max-height: calc(100vh - 40px) !important;
-		padding: 12px !important;
+		padding: 0 !important;
 		font-size: 14px !important;
 	}
 	
@@ -163,7 +153,7 @@ body {
 		min-width: 200px !important;
 		max-width: calc(100vw - 12px) !important;
 		max-height: calc(100vh - 30px) !important;
-		padding: 10px !important;
+		padding: 0 !important;
 		font-size: 13px !important;
 	}
 }
@@ -174,7 +164,7 @@ body {
 		min-width: 180px !important;
 		max-width: calc(100vw - 8px) !important;
 		max-height: calc(100vh - 20px) !important;
-		padding: 8px !important;
+		padding: 0 !important;
 		font-size: 12px !important;
 	}
 	
@@ -189,7 +179,7 @@ body {
 @media (max-height: 500px) and (orientation: landscape) {
 	[data-tour-elem="popover"] {
 		max-height: calc(100vh - 20px) !important;
-		padding: 8px !important;
+		padding: 0 !important;
 		font-size: 13px !important;
 	}
 }
@@ -217,6 +207,21 @@ body {
 	}
 }
 
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 .animate-slideDown {
 	animation: slideDown 0.3s ease-out;
+}
+
+.animate-fadeIn {
+	animation: fadeIn 0.5s ease-out;
 }

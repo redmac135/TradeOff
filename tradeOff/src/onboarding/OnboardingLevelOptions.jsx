@@ -105,16 +105,17 @@ const OnboardingLevelOptions = ({ onNext }) => {
                       {/* Description */}
                       <div className="mb-4">
                         <div className="text-600 text-base font-light font-['Lato']">
-                          Start with <span className="text-Yellow font-semibold">{level.startingAmount}</span> {level.description}
+                          Start with <span className="text-amber-500 font-semibold">{level.startingAmount}</span> {level.description}
                         </div>
                       </div>
 
                       {/* Next Button */}
                       <div 
                         onClick={() => handleLevelNext(level)}
-                        className="w-full py-3 px-6 bg-Blue rounded-[10px] flex justify-center items-center cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                        className="w-full py-3 px-6 rounded-[10px] flex justify-center items-center cursor-pointer hover:opacity-90 transition-all duration-200"
+                        style={{ backgroundColor: '#005DAA' }}
                       >
-                        <div className="text-Light-Blue text-lg font-semibold font-['Lato']">
+                        <div className="text-white text-lg font-semibold font-['Lato']">
                           Next
                         </div>
                       </div>

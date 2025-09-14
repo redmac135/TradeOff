@@ -79,8 +79,9 @@ export const OnboardingProvider = ({ children }) => {
     setIsDemoMode(true);
     setCurrentOnboardingStep(0);
     
-    // Initialize demo data
-    setDemoCash(50000);
+  // Initialize demo data - read starting cash from onboarding/localStorage
+  const storedCash = Number(localStorage.getItem('startingCash')) || 50000;
+  setDemoCash(storedCash);
     setDemoPositions([]);
     initializeDemoMarketData();
     initializeDemoNews();

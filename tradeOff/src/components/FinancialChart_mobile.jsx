@@ -3,6 +3,7 @@ import { Chart as ChartJS, registerables } from 'chart.js';
 import { CandlestickController, CandlestickElement } from 'chartjs-chart-financial';
 import { Chart } from 'react-chartjs-2';
 import { useGameContext } from '../context/GameContext';
+import { useOnboarding } from '../context/OnboardingContext';
 import { useGameData } from '../hooks/useGameData';
 
 // Register Chart.js components
@@ -10,10 +11,12 @@ ChartJS.register(...registerables, CandlestickController, CandlestickElement);
 
 const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   const { marketData, positions, currentMarketPrice, calculatePositionPnL, totalPnL } = useGameContext();
+  const { isDemoMode, showInitialPrompt } = useOnboarding();
   const chartRef = useRef(null);
   
-  // Use the same live data source as the web version
-  const { candles } = useGameData();
+  // Use the same live data source as the web version, but gate until landing dismissed
+  const liveEnabled = !isDemoMode && !showInitialPrompt;
+  const { candles } = useGameData(liveEnabled);
 
   // Add state for smooth data transitions
   const [cachedData, setCachedData] = useState([]);

@@ -4,12 +4,20 @@ import { ddb } from "../aws/dynamoClient";
 
 const TABLE_NAME = "TradeOffData";
 
-export function useGameData() {
+// Optional flag `enabled` to control when polling begins
+export function useGameData(enabled = true) {
   const [candles, setCandles] = useState([]);
   const [news, setNews] = useState([]);
 
   useEffect(() => {
     let interval;
+
+    if (!enabled) {
+      // When disabled, clear any data to ensure UI shows demo/placeholder
+      setCandles([]);
+      setNews([]);
+      return; // Don't start polling
+    }
 
     async function fetchUpdates() {
       try {
@@ -54,7 +62,7 @@ export function useGameData() {
     interval = setInterval(fetchUpdates, 333);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [enabled]);
 
   return { candles, news };
 }

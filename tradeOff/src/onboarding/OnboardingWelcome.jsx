@@ -12,9 +12,10 @@ const OnboardingWelcome = ({ onGetStarted }) => {
         {/* Get Started Button */}
         <div 
           onClick={onGetStarted}
-          className="px-16 py-4 bg-800 rounded-[10px] inline-flex justify-center items-center gap-2.5 cursor-pointer hover:bg-700 transition-colors duration-200"
+          className="px-16 py-4 rounded-[10px] inline-flex justify-center items-center gap-2.5 cursor-pointer hover:opacity-90 transition-opacity duration-200"
+          style={{ backgroundColor: 'var(--800, #202938)' }}
         >
-          <div className="justify-start text-Light-Blue text-2xl font-semibold font-['Lato']">
+          <div className="justify-start text-white text-2xl font-semibold font-['Lato']">
             Get Started
           </div>
         </div>

@@ -35,9 +35,10 @@ const OnboardingPlayerName = ({ onNext }) => {
         {/* Next Button */}
         <div 
           onClick={handleNext}
-          className="w-96 px-16 py-4 bg-Blue rounded-[10px] inline-flex justify-center items-center gap-2.5 cursor-pointer hover:opacity-90 transition-opacity duration-200"
+          className="w-96 px-16 py-4 rounded-[10px] inline-flex justify-center items-center gap-2.5 cursor-pointer hover:opacity-90 transition-opacity duration-200"
+          style={{ backgroundColor: 'var(--800, #202938)' }}
         >
-          <div className="justify-start text-Light-Blue text-2xl font-semibold font-['Lato']">
+          <div className="justify-start text-white text-2xl font-semibold font-['Lato']">
             Next
           </div>
         </div>

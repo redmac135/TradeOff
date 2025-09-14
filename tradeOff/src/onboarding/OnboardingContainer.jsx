@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import OnboardingWelcome from './OnboardingWelcome';
 import OnboardingPlayerName from './OnboardingPlayerName';
 import OnboardingLevelOptions from './OnboardingLevelOptions';
+import OnboardingConfirmation from './OnboardingConfirmation';
 
 const OnboardingContainer = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState('welcome');
@@ -15,7 +16,11 @@ const OnboardingContainer = ({ onComplete }) => {
   };
 
   const handleLevelOptionsNext = () => {
-    // Complete the onboarding after level selection
+    setCurrentStep('confirmation');
+  };
+
+  const handleLetsPlay = () => {
+    // Complete the onboarding after confirmation
     onComplete();
   };
 
@@ -37,6 +42,12 @@ const OnboardingContainer = ({ onComplete }) => {
         return (
           <OnboardingLevelOptions 
             onNext={handleLevelOptionsNext}
+          />
+        );
+      case 'confirmation':
+        return (
+          <OnboardingConfirmation 
+            onLetsPlay={handleLetsPlay}
           />
         );
       default:

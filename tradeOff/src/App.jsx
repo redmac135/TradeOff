@@ -2,26 +2,28 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { GameContext } from './context/GameContext';
 import { OnboardingProvider, useOnboarding } from './context/OnboardingContext';
 import { useGameData } from './hooks/useGameData'; // Import the live data hook
+import { TrainingLanding } from './training';
 import Navbar from './components/Navbar';
 import FinancialChart from './components/FinancialChart';
 import MarketNews from './components/MarketNews';
 import Card from './components/Card';
 import PositionControl from './components/PositionControl';
 import PositionList from './components/PositionList';
-import OnboardingPromptModal from './components/OnboardingPromptModal';
 import OnboardingTour from './components/OnboardingTour';
 import { OnboardingContainer } from './onboarding';
 import './App.css';
 
 function GameApp() {
   // Get onboarding state to pause timer during onboarding
-  const { isOnboardingActive } = useOnboarding();
+  const { isOnboardingActive, showInitialPrompt, isDemoMode } = useOnboarding();
   
   // Track initial onboarding completion
   const [hasCompletedInitialOnboarding, setHasCompletedInitialOnboarding] = useState(false);
   
   // Connect to live data from DynamoDB
-  const { candles, news: liveNewsItems } = useGameData();
+  // Disable live polling until: tutorial is running (demo mode) or user skipped
+  const liveDataEnabled = !showInitialPrompt && !isDemoMode; // Only fetch live when landing is dismissed and not in demo
+  const { candles, news: liveNewsItems } = useGameData(liveDataEnabled);
   
   // Centralized State Management
   const [cash, setCash] = useState(50000); // Starting cash
@@ -321,6 +323,8 @@ function GameApp() {
 
   return (
     <GameContext.Provider value={gameContextValue}>
+      {/* Landing overlay that blocks interaction and live data until dismissed */}
+      <TrainingLanding />
       <AppContent />
     </GameContext.Provider>
   );
@@ -343,7 +347,6 @@ const AppContent = () => {
 
   return (
     <>
-      <OnboardingPromptModal />
       <OnboardingTour />
       <div className="h-screen bg-gray-100 flex flex-col overflow-hidden" data-tour="welcome">
         <Navbar 
@@ -356,8 +359,8 @@ const AppContent = () => {
         
         <main className="flex-1 px-4 py-6 overflow-hidden min-h-0">
           <div className="h-full flex flex-col lg:flex-row gap-6 min-h-0">
-            {/* Main Chart Area */}
-            <div className="hidden md:flex flex-1 flex-col gap-4 overflow-hidden min-h-0">
+            {/* Main Chart Area - Show during demo mode even on mobile */}
+            <div className={`${isDemoMode ? 'flex' : 'hidden md:flex'} flex-1 flex-col gap-4 overflow-hidden min-h-0`}>
               <div className="flex-1 overflow-hidden min-h-0" data-tour="chart">
                 <FinancialChart 
                   useMockData={true} 
@@ -365,14 +368,14 @@ const AppContent = () => {
                   demoData={isDemoMode ? demoMarketData : undefined}
                 />
               </div>
-              <div className="hidden md:block flex-shrink-0 h-24" data-tour="demo-trade">
+              <div className={`${isDemoMode ? 'block' : 'hidden md:block'} flex-shrink-0 h-24`} data-tour="demo-trade">
                 <PositionControl />
               </div>
             </div>
 
-            {/* Sidebar */}
-            <div className="hidden lg:flex w-full lg:w-96 flex-col gap-4 overflow-hidden">
-              <div className="hidden md:block flex-1 overflow-hidden" data-tour="news-feed">
+            {/* Sidebar - Show during demo mode even on mobile */}
+            <div className={`${isDemoMode ? 'flex' : 'hidden lg:flex'} w-full lg:w-96 flex-col gap-4 overflow-hidden`}>
+              <div className={`${isDemoMode ? 'block' : 'hidden md:block'} flex-1 overflow-hidden`} data-tour="news-feed">
                 <MarketNews demoData={isDemoMode ? demoNewsItems : undefined} />
               </div>
               <div data-tour="positions">
