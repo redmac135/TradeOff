@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { GameContext } from './context/GameContext';
+import { OnboardingProvider, useOnboarding } from './context/OnboardingContext';
 import Navbar from './components/Navbar';
 import FinancialChart from './components/FinancialChart';
 import MarketNews from './components/MarketNews';
 import Card from './components/Card';
 import PositionControl from './components/PositionControl';
 import PositionList from './components/PositionList';
+import OnboardingPromptModal from './components/OnboardingPromptModal';
+import OnboardingTour from './components/OnboardingTour';
 import './App.css';
 
 // Generate initial mock market data
@@ -54,7 +57,10 @@ const initialNewsItems = [
   }
 ];
 
-function App() {
+function GameApp() {
+  // Get onboarding state to pause timer during onboarding
+  const { isOnboardingActive } = useOnboarding();
+  
   // Centralized State Management
   const [cash, setCash] = useState(50000); // Starting cash
   const [positions, setPositions] = useState([]); // Array of open trades
@@ -300,14 +306,14 @@ function App() {
     return () => clearInterval(interval);
   }, [useMockData, isPageVisible]);
 
-  // Game timer countdown (pause when page is not visible)
+  // Game timer countdown (pause when page is not visible or during onboarding)
   useEffect(() => {
     if (gameTimer <= 0) return;
 
     const timer = setInterval(() => {
-      // Only countdown when page is visible
-      if (!isPageVisible) {
-        console.log('Timer paused - page not visible');
+      // Only countdown when page is visible and not in onboarding
+      if (!isPageVisible || isOnboardingActive) {
+        console.log('Timer paused - page not visible or onboarding active');
         return;
       }
 
@@ -321,7 +327,7 @@ function App() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameTimer, isPageVisible]);
+  }, [gameTimer, isPageVisible, isOnboardingActive]);
 
   // Simulate occasional news updates
   useEffect(() => {
@@ -373,36 +379,100 @@ function App() {
 
   return (
     <GameContext.Provider value={gameContextValue}>
-      <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
+      <AppContent />
+    </GameContext.Provider>
+  );
+}
+
+// New component to handle the onboarding logic
+const AppContent = () => {
+  const { isDemoMode, demoMarketData, demoNewsItems, demoCash, demoPositions } = useOnboarding();
+  const gameContext = React.useContext(GameContext);
+  
+  // Use demo data when in onboarding mode, otherwise use real game data
+  const displayData = {
+    cash: isDemoMode ? demoCash : gameContext.cash,
+    positions: isDemoMode ? demoPositions : gameContext.positions,
+    marketData: isDemoMode ? demoMarketData : gameContext.marketData,
+    newsItems: isDemoMode ? demoNewsItems : gameContext.newsItems,
+    currentMarketPrice: isDemoMode ? (demoMarketData[demoMarketData.length - 1]?.c || 9000) : gameContext.currentMarketPrice,
+    totalPnL: isDemoMode ? calculateDemoPnL(demoPositions, demoMarketData) : gameContext.totalPnL,
+  };
+
+  return (
+    <>
+      <OnboardingPromptModal />
+      <OnboardingTour />
+      <div className="h-screen bg-gray-100 flex flex-col overflow-hidden" data-tour="welcome">
         <Navbar />
+        
+        {/* Hidden element for final tour step */}
+        <div data-tour="final" className="sr-only">Final step marker</div>
         
         <main className="flex-1 px-4 py-6 overflow-hidden min-h-0">
           <div className="h-full flex flex-col lg:flex-row gap-6 min-h-0">
             {/* Main Chart Area */}
             <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
-              <div className="flex-1 overflow-hidden min-h-0">
-                <FinancialChart useMockData={useMockData} apiData={apiData} />
+              <div className="flex-1 overflow-hidden min-h-0" data-tour="chart">
+                <FinancialChart 
+                  useMockData={true} 
+                  apiData={[]} 
+                  demoData={isDemoMode ? demoMarketData : undefined}
+                />
               </div>
-              <div className="flex-shrink-0 h-24">
+              <div className="flex-shrink-0 h-24" data-tour="demo-trade">
                 <PositionControl />
               </div>
             </div>
 
             {/* Sidebar */}
             <div className="w-full lg:w-96 flex flex-col gap-4 overflow-hidden">
-              <div className="flex-1 overflow-hidden">
-                <MarketNews />
+              <div className="flex-1 overflow-hidden" data-tour="news-feed">
+                <MarketNews demoData={isDemoMode ? demoNewsItems : undefined} />
               </div>
-              <PositionList />
-              <Card title="Your Cash" value={cash} type="cash" />
-              <Card title="Your Active Positions" value={`${positions.length} positions`} type="equity" />
-              <Card title="Your Total P&L" value={totalPnL} type="cash" />
+              <div data-tour="positions">
+                <PositionList demoData={isDemoMode ? demoPositions : undefined} />
+              </div>
+              <div data-tour="cash">
+                <Card title="Your Cash" value={displayData.cash} type="cash" />
+              </div>
+              <div data-tour="pnl">
+                <Card title="Your Total P&L" value={displayData.totalPnL} type="cash" />
+              </div>
             </div>
           </div>
         </main>
       </div>
-    </GameContext.Provider>
+    </>
   );
-}
+};
+
+// Helper function to calculate demo P&L
+const calculateDemoPnL = (positions, marketData) => {
+  if (!positions.length || !marketData.length) return 0;
+  
+  const currentPrice = marketData[marketData.length - 1]?.c || 9000;
+  
+  return positions.reduce((total, position) => {
+    const priceChange = currentPrice - position.entryPrice;
+    const percentChange = priceChange / position.entryPrice;
+    
+    if (position.type === 'long') {
+      return total + (position.investment * percentChange);
+    } else if (position.type === 'short') {
+      return total + (position.investment * (-percentChange));
+    }
+    return total;
+  }, 0);
+};
+
+// Main App component with onboarding provider
+const App = () => {
+  return (
+    <OnboardingProvider>
+      <GameApp />
+    </OnboardingProvider>
+  );
+};
 
 export default App;

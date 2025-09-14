@@ -1,10 +1,29 @@
 import React from 'react';
 import { useGameContext } from '../context/GameContext';
+import { useOnboarding } from '../context/OnboardingContext';
 
-const PositionList = () => {
+const PositionList = ({ demoData }) => {
   const { positions, currentMarketPrice, calculatePositionPnL } = useGameContext();
+  const { isDemoMode, getCurrentDemoPrice } = useOnboarding();
+  
+  // Use demo data if provided, otherwise use real positions
+  const displayPositions = demoData || positions;
+  const displayPrice = isDemoMode ? getCurrentDemoPrice() : currentMarketPrice;
+  
+  // Simple P&L calculation for demo mode
+  const calculateDemoPnL = (position, currentPrice) => {
+    const priceChange = currentPrice - position.entryPrice;
+    const percentChange = priceChange / position.entryPrice;
+    
+    if (position.type === 'long') {
+      return position.investment * percentChange;
+    } else if (position.type === 'short') {
+      return position.investment * (-percentChange);
+    }
+    return 0;
+  };
 
-  if (positions.length === 0) {
+  if (displayPositions.length === 0) {
     return (
       <div className="w-full p-4 bg-gray-50 rounded-lg border border-gray-200">
         <div className="text-center">
@@ -19,8 +38,10 @@ const PositionList = () => {
 
   return (
     <div className="w-full space-y-2">
-      {positions.map((position) => {
-        const profitLoss = calculatePositionPnL(position, currentMarketPrice);
+      {displayPositions.map((position) => {
+        const profitLoss = isDemoMode 
+          ? calculateDemoPnL(position, displayPrice)
+          : calculatePositionPnL(position, currentMarketPrice);
         const profitLossPercent = (profitLoss / position.investment) * 100;
         const isProfit = profitLoss >= 0;
         

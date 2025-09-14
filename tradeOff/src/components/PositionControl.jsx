@@ -1,34 +1,50 @@
 import React, { useState, useRef } from 'react';
 import { useGameContext } from '../context/GameContext';
+import { useOnboarding } from '../context/OnboardingContext';
 
 const PositionControl = () => {
   // Use GameContext for real trading functionality
   const { cash, positions, handleTrade, handleSellAllPositions } = useGameContext();
+  const { isDemoMode, demoCash, demoPositions, executeDemoTrade } = useOnboarding();
+  
   const [sliderValue, setSliderValue] = useState(50); // 0-100 range
   const [isSliderActive, setIsSliderActive] = useState(false); // Track hover/active state
   const sliderRef = useRef(null); // Reference to the slider container
   
+  // Use demo data when in demo mode, otherwise use real data
+  const displayCash = isDemoMode ? demoCash : cash;
+  const displayPositions = isDemoMode ? demoPositions : positions;
+  
   // Check if there are open positions
-  const hasOpenPositions = positions.length > 0;
+  const hasOpenPositions = displayPositions.length > 0;
 
   const handlePositionChange = (position) => {
     console.log('Position button clicked:', position);
     
     if (position === 'short' || position === 'long') {
-      // Execute real trade using the GameContext
-      const success = handleTrade(position, sliderValue);
+      let success = false;
+      
+      if (isDemoMode) {
+        // Execute demo trade
+        success = executeDemoTrade(position, sliderValue);
+      } else {
+        // Execute real trade using the GameContext
+        success = handleTrade(position, sliderValue);
+      }
       
       if (success) {
-        const tradeAmount = (cash * sliderValue) / 100;
+        const tradeAmount = (displayCash * sliderValue) / 100;
         console.log(`Successfully executed ${position} trade with ${sliderValue}% allocation ($${tradeAmount.toLocaleString()})`);
       } else {
         console.log(`Failed to execute ${position} trade`);
       }
       
     } else if (position === 'sell') {
-      // Sell all positions using GameContext
-      const result = handleSellAllPositions();
-      console.log('Sold all positions:', result);
+      if (!isDemoMode) {
+        // Sell all positions using GameContext (only in real mode)
+        const result = handleSellAllPositions();
+        console.log('Sold all positions:', result);
+      }
     }
   };
 
@@ -77,11 +93,11 @@ const PositionControl = () => {
   // Calculate the exact position for better gradient alignment
   const circlePosition = sliderValue;
 
-  const tradeAmount = (cash * sliderValue) / 100;
+  const tradeAmount = (displayCash * sliderValue) / 100;
 
   return (
     <div className="w-full h-full shadow-[4px_4px_20px_0px_rgba(0,0,0,0.10)] flex justify-start items-center gap-4 bg-white rounded-[10px] p-3">
-      <div className="w-[360px] flex justify-start items-center gap-3 h-full">
+      <div className="w-[360px] flex justify-start items-center gap-3 h-full" data-tour="trading-buttons">
         {hasOpenPositions ? (
           <button 
             onClick={() => handlePositionChange('sell')}
@@ -112,7 +128,7 @@ const PositionControl = () => {
           </>
         )}
       </div>
-      <div className="flex-1 relative flex justify-center items-center px-4">
+      <div className="flex-1 relative flex justify-center items-center px-4" data-tour="slider">
         <div 
           ref={sliderRef}
           className="flex-1 h-3 rounded-[20px] relative transition-all duration-150 ease-out"
@@ -157,7 +173,7 @@ const PositionControl = () => {
         <div className="ml-4 text-sm font-medium text-gray-600 min-w-[100px] text-right">
           {hasOpenPositions ? (
             <span className="text-green-600">
-              {positions.length} position{positions.length !== 1 ? 's' : ''} open
+              {displayPositions.length} position{displayPositions.length !== 1 ? 's' : ''} open
             </span>
           ) : (
             <>

@@ -25,7 +25,7 @@ const Navbar = () => {
 
           <div className="w-full md:w-auto flex items-center justify-end md:justify-end gap-4">
             {/* Time Remaining Component - Left of profile picture, vertically centered */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-tour="timer">
               <div className="text-gray-500 text-lg font-normal font-['Lato']">Time Remaining</div>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-500">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
