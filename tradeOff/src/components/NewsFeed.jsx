@@ -1,4 +1,5 @@
 import React from 'react';
+import { Newspaper } from 'lucide-react';
 
 const NewsFeed = () => {
   const newsItems = [
@@ -42,7 +43,10 @@ const NewsFeed = () => {
 
   return (
     <div className="bg-white rounded-[10px] shadow-md p-6 h-72 relative">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">Market News</h3>
+      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-3">
+        <Newspaper className="text-gray-800" size={20} />
+        <span>Market News</span>
+      </h3>
       <div className="space-y-3 h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         {newsItems.map((item, index) => (
           <div key={index} className="border-b border-gray-200 pb-2 last:border-b-0">

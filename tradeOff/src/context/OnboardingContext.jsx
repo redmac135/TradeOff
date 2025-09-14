@@ -12,10 +12,7 @@ export const useOnboarding = () => {
 
 export const OnboardingProvider = ({ children }) => {
   const [isOnboardingActive, setIsOnboardingActive] = useState(false);
-  const [showInitialPrompt, setShowInitialPrompt] = useState(() => {
-    // Check if user has seen onboarding before
-    return !localStorage.getItem('onboarding-completed');
-  });
+  const [showInitialPrompt, setShowInitialPrompt] = useState(true); // Always show prompt on visit
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [currentOnboardingStep, setCurrentOnboardingStep] = useState(0);
 
@@ -93,12 +90,12 @@ export const OnboardingProvider = ({ children }) => {
     setIsOnboardingActive(false);
     setIsDemoMode(false);
     setCurrentOnboardingStep(0);
-    localStorage.setItem('onboarding-completed', 'true');
+    // Removed localStorage setting - onboarding can be accessed every time
   }, []);
 
   const skipOnboarding = useCallback(() => {
     setShowInitialPrompt(false);
-    localStorage.setItem('onboarding-completed', 'true');
+    // Removed localStorage setting - onboarding can be accessed every time
   }, []);
 
   const simulateMarketReaction = useCallback((newsType) => {
@@ -179,6 +176,16 @@ export const OnboardingProvider = ({ children }) => {
     initializeDemoNews();
   }, [initializeDemoMarketData, initializeDemoNews]);
 
+  // Function to manually trigger onboarding (e.g., from a help button)
+  const triggerOnboarding = useCallback(() => {
+    setShowInitialPrompt(true);
+  }, []);
+
+  // Function to reset the initial prompt state
+  const resetPromptState = useCallback(() => {
+    setShowInitialPrompt(true);
+  }, []);
+
   const value = {
     // State
     isOnboardingActive,
@@ -199,6 +206,8 @@ export const OnboardingProvider = ({ children }) => {
     executeDemoTrade,
     resetDemo,
     setCurrentOnboardingStep,
+    triggerOnboarding,
+    resetPromptState,
 
     // Getters
     getCurrentDemoPrice: () => demoMarketData[demoMarketData.length - 1]?.c || 9000,

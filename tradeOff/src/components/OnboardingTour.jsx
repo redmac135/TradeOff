@@ -7,7 +7,7 @@ const createOnboardingSteps = () => [
   {
     selector: '[data-tour="welcome"]',
     content: (
-      <div className="max-w-sm">
+      <div className="w-full">
         <h3 className="text-lg font-bold text-gray-900 mb-3">
           Welcome to TradeOff! 🎯
         </h3>
@@ -27,7 +27,7 @@ const createOnboardingSteps = () => [
   {
     selector: '[data-tour="chart"]',
     content: (
-      <div className="max-w-sm">
+      <div className="w-full">
         <h3 className="text-lg font-bold text-gray-900 mb-3">
           📈 Market Chart
         </h3>
@@ -49,7 +49,7 @@ const createOnboardingSteps = () => [
   {
     selector: '[data-tour="trading-buttons"]',
     content: (
-      <div className="max-w-sm">
+      <div className="w-full">
         <h3 className="text-lg font-bold text-gray-900 mb-3">
           🎯 Trading Buttons
         </h3>
@@ -76,7 +76,7 @@ const createOnboardingSteps = () => [
   {
     selector: '[data-tour="slider"]',
     content: (
-      <div className="max-w-sm">
+      <div className="w-full">
         <h3 className="text-lg font-bold text-gray-900 mb-3">
           🎚️ Position Size Slider
         </h3>
@@ -184,24 +184,113 @@ const createOnboardingSteps = () => [
   {
     selector: '[data-tour="positions"]',
     content: (
-      <div className="max-w-sm">
+      <div className="w-full">
         <h3 className="text-lg font-bold text-gray-900 mb-3">
-          📋 Your Positions
+          � Your Positions
         </h3>
         <p className="text-gray-700 mb-3">
-          When you make trades, they'll appear here showing:
+          This panel shows all your active trades. For each position, you can see:
         </p>
         <ul className="text-sm text-gray-700 space-y-1 mb-3">
-          <li>• Entry price and current profit/loss</li>
-          <li>• Whether it's a LONG or SHORT position</li>
-          <li>• A "Sell" button to close the position</li>
+          <li>• <strong>Type:</strong> Long (🟢) or Short (🔴)</li>
+          <li>• <strong>Amount:</strong> How much you invested</li>
+          <li>• <strong>P&L:</strong> Your current profit or loss</li>
+          <li>• <strong>Close button:</strong> Exit the trade</li>
         </ul>
         <p className="text-gray-700">
-          You can have multiple positions open at once!
+          Close positions anytime to lock in profits or cut losses!
         </p>
       </div>
     ),
     position: 'left',
+  },
+  {
+    selector: '[data-tour="news"]',
+    content: (
+      <div className="w-full">
+        <h3 className="text-lg font-bold text-gray-900 mb-3">
+          📰 Market News
+        </h3>
+        <p className="text-gray-700 mb-3">
+          Breaking news affects stock prices! Watch for:
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1 mb-3">
+          <li>• <strong>Positive news:</strong> Often pushes prices UP</li>
+          <li>• <strong>Negative news:</strong> Often pushes prices DOWN</li>
+          <li>• <strong>Neutral news:</strong> May have mixed or no effect</li>
+        </ul>
+        <p className="text-gray-700">
+          Read the news to predict which way the market might move!
+        </p>
+      </div>
+    ),
+    position: 'left',
+  },
+  {
+    selector: '[data-tour="portfolio"]',
+    content: (
+      <div className="w-full">
+        <h3 className="text-lg font-bold text-gray-900 mb-3">
+          💰 Portfolio Overview
+        </h3>
+        <p className="text-gray-700 mb-3">
+          Keep track of your trading performance:
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1 mb-3">
+          <li>• <strong>Total Value:</strong> Your cash + position values</li>
+          <li>• <strong>Cash:</strong> Available money for new trades</li>
+          <li>• <strong>P&L:</strong> Total profit/loss from your starting $50k</li>
+        </ul>
+        <p className="text-gray-700">
+          Your goal is to maximize your total portfolio value!
+        </p>
+      </div>
+    ),
+    position: 'bottom',
+  },
+  {
+    selector: '[data-tour="timer"]',
+    content: (
+      <div className="w-full">
+        <h3 className="text-lg font-bold text-gray-900 mb-3">
+          ⏰ Game Timer
+        </h3>
+        <p className="text-gray-700 mb-3">
+          You have a limited time to make your trades and grow your portfolio.
+        </p>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+          <p className="text-sm text-yellow-800">
+            <strong>Pro Tip:</strong> Don't wait too long! Time moves fast in trading.
+          </p>
+        </div>
+        <p className="text-gray-700">
+          Make your moves quickly but thoughtfully!
+        </p>
+      </div>
+    ),
+    position: 'bottom',
+  },
+  {
+    selector: '[data-tour="tutorial-button"]',
+    content: (
+      <div className="w-full">
+        <h3 className="text-lg font-bold text-gray-900 mb-3">
+          🎓 Tutorial Access
+        </h3>
+        <p className="text-gray-700 mb-3">
+          Need a refresher? Click this button anytime to restart the tutorial and switch back to practice mode.
+        </p>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+          <p className="text-sm text-green-800">
+            <strong>Remember:</strong> Practice makes perfect! Don't hesitate to run through the tutorial again.
+          </p>
+        </div>
+        <p className="text-gray-700">
+          You can always come back here if you need help!
+        </p>
+      </div>
+    ),
+    position: 'bottom',
   },
   {
     selector: '[data-tour="demo-trade"]',
@@ -261,17 +350,12 @@ const createOnboardingSteps = () => [
 const OnboardingTourContent = () => {
   const { 
     isOnboardingActive, 
-    completeOnboarding, 
     addDemoNews, 
-    executeDemoTrade,
-    currentOnboardingStep,
-    setCurrentOnboardingStep 
+    currentOnboardingStep
   } = useOnboarding();
   
-  const { setIsOpen, setCurrentStep } = useTour();
+  const { setIsOpen } = useTour();
   const [hasTriggeredDemo, setHasTriggeredDemo] = useState(false);
-
-  const steps = createOnboardingSteps();
 
   useEffect(() => {
     if (isOnboardingActive) {
@@ -304,6 +388,165 @@ const OnboardingTourContent = () => {
 const OnboardingTour = () => {
   const { isOnboardingActive, completeOnboarding } = useOnboarding();
 
+  // COMPREHENSIVE VIEWPORT-AWARE POSITIONING SYSTEM
+  const smartPositioning = React.useCallback(() => {
+    // Allow DOM to settle first
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const popover = document.querySelector('[data-tour-elem="popover"]');
+        const badge = document.querySelector('[data-tour-elem="badge"]');
+        
+        if (!popover) return;
+
+        const viewport = {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        };
+
+        // Get current popover dimensions
+        const popoverRect = popover.getBoundingClientRect();
+        
+        // SMART POSITIONING ALGORITHM
+        const SAFE_MARGIN = Math.max(10, Math.min(20, viewport.width * 0.02));
+        const PREFERRED_MARGIN = Math.max(20, Math.min(40, viewport.width * 0.04));
+        
+        // Calculate optimal position based on viewport
+        let optimalLeft, optimalTop;
+        
+        // Determine optimal horizontal position
+        const availableWidth = viewport.width - (2 * SAFE_MARGIN);
+        const popoverWidth = Math.min(
+          Math.max(280, popoverRect.width), 
+          availableWidth,
+          viewport.width < 480 ? viewport.width - 16 : 480
+        );
+        
+        // Center horizontally by default, but respect edges
+        optimalLeft = Math.max(
+          SAFE_MARGIN,
+          Math.min(
+            (viewport.width - popoverWidth) / 2,
+            viewport.width - popoverWidth - SAFE_MARGIN
+          )
+        );
+        
+        // Determine optimal vertical position
+        const availableHeight = viewport.height - (2 * SAFE_MARGIN);
+        const maxPopoverHeight = Math.min(
+          popoverRect.height,
+          availableHeight,
+          viewport.height < 600 ? viewport.height - 40 : viewport.height - 80
+        );
+        
+        // Try to center vertically, but prioritize top visibility on small screens
+        let preferredTop;
+        if (viewport.height < 600) {
+          // On small screens, position closer to top
+          preferredTop = Math.max(SAFE_MARGIN, viewport.height * 0.1);
+        } else {
+          // On larger screens, center vertically
+          preferredTop = Math.max(PREFERRED_MARGIN, (viewport.height - maxPopoverHeight) / 2);
+        }
+        
+        optimalTop = Math.max(
+          SAFE_MARGIN,
+          Math.min(preferredTop, viewport.height - maxPopoverHeight - SAFE_MARGIN)
+        );
+        
+        // APPLY POSITIONING WITH SMOOTH TRANSITIONS
+        popover.style.position = 'fixed';
+        popover.style.left = `${optimalLeft}px`;
+        popover.style.top = `${optimalTop}px`;
+        popover.style.transform = 'none';
+        popover.style.transition = 'all 0.3s ease-out';
+        
+        // Ensure proper dimensions
+        popover.style.width = `${popoverWidth}px`;
+        popover.style.maxHeight = `${maxPopoverHeight}px`;
+        popover.style.overflowY = maxPopoverHeight < popoverRect.height ? 'auto' : 'visible';
+        
+        // POSITION BADGE INTELLIGENTLY
+        if (badge) {
+          // Position badge in the optimal corner, ensuring visibility
+          const badgeSize = viewport.width < 480 ? 20 : 24;
+          const badgeOffset = badgeSize / 2;
+          
+          let badgeLeft = Math.max(badgeOffset, optimalLeft - badgeOffset);
+          let badgeTop = Math.max(badgeOffset, optimalTop - badgeOffset);
+          
+          // Ensure badge doesn't go off edges
+          badgeLeft = Math.min(badgeLeft, viewport.width - badgeSize - badgeOffset);
+          badgeTop = Math.min(badgeTop, viewport.height - badgeSize - badgeOffset);
+          
+          badge.style.position = 'fixed';
+          badge.style.left = `${badgeLeft}px`;
+          badge.style.top = `${badgeTop}px`;
+          badge.style.width = `${badgeSize}px`;
+          badge.style.height = `${badgeSize}px`;
+          badge.style.transition = 'all 0.3s ease-out';
+        }
+        
+        // Add visual indicator that positioning is complete
+        popover.classList.add('tour-positioned');
+        
+        console.log(`Smart positioning applied: ${Math.round(optimalLeft)}x${Math.round(optimalTop)} (${popoverWidth}x${maxPopoverHeight}) on viewport ${viewport.width}x${viewport.height}`);
+        
+      }, 150); // Increased delay for complex layouts
+    });
+  }, []);
+
+  // COMPREHENSIVE EVENT HANDLING
+  React.useEffect(() => {
+    if (!isOnboardingActive) return;
+
+    // Initial positioning
+    smartPositioning();
+
+    // Create debounced version for performance
+    let resizeTimer;
+    const debouncedPositioning = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(smartPositioning, 100);
+    };
+
+    // Listen to all possible layout-changing events
+    window.addEventListener('resize', debouncedPositioning);
+    window.addEventListener('orientationchange', debouncedPositioning);
+    window.addEventListener('scroll', debouncedPositioning, { passive: true });
+    
+    // Handle browser zoom and mobile browser UI changes
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    mediaQuery.addListener(debouncedPositioning);
+    
+    // Observe DOM changes that might affect layout
+    const observer = new MutationObserver(debouncedPositioning);
+    observer.observe(document.body, { 
+      childList: true, 
+      subtree: true, 
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    });
+    
+    // ResizeObserver for accurate viewport detection
+    const resizeObserver = new ResizeObserver(debouncedPositioning);
+    resizeObserver.observe(document.documentElement);
+    
+    // Handle visibility changes (iOS Safari)
+    document.addEventListener('visibilitychange', smartPositioning);
+    
+    // Cleanup
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener('resize', debouncedPositioning);
+      window.removeEventListener('orientationchange', debouncedPositioning);
+      window.removeEventListener('scroll', debouncedPositioning);
+      mediaQuery.removeListener(debouncedPositioning);
+      observer.disconnect();
+      resizeObserver.disconnect();
+      document.removeEventListener('visibilitychange', smartPositioning);
+    };
+  }, [isOnboardingActive, smartPositioning]);
+
   if (!isOnboardingActive) return null;
 
   const steps = createOnboardingSteps();
@@ -318,32 +561,92 @@ const OnboardingTour = () => {
       showCloseButton={false}
       disableInteraction={false}
       scrollSmooth={true}
-      padding={{ mask: 5, popover: [10, 15] }}
+      padding={{ mask: 8, popover: [16, 20] }}
+      inViewThreshold={{ x: 10, y: 10 }}
+      className="tour-provider"
+      afterOpen={smartPositioning}
+      beforeClose={() => {}}
       styles={{
         popover: (base) => ({
           ...base,
           '--reactour-accent': '#2563eb',
           borderRadius: 12,
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          // Let our positioning system handle all sizing and positioning
+          position: 'fixed',
+          minWidth: '280px',
+          maxWidth: 'min(480px, calc(100vw - 40px))',
+          maxHeight: 'calc(100vh - 80px)',
+          boxSizing: 'border-box',
+          zIndex: 99999,
         }),
         maskArea: (base) => ({ 
           ...base, 
           rx: 8,
         }),
+        mask: (base) => ({
+          ...base,
+          zIndex: 99998,
+        }),
         badge: (base) => ({ 
           ...base, 
           backgroundColor: '#2563eb',
+          fontSize: '12px',
+          fontWeight: '600',
+          minWidth: '24px',
+          height: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          border: '2px solid white',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          zIndex: 100001,
+          position: 'fixed',
+        }),
+        controls: (base) => ({
+          ...base,
+          marginTop: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          zIndex: 100000,
+        }),
+        navigation: (base) => ({
+          ...base,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          margin: '0 auto',
+          flex: '1',
+        }),
+        dot: (base, { current }) => ({
+          ...base,
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          border: 'none',
+          backgroundColor: current ? '#2563eb' : '#d1d5db',
+          margin: '0',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          flexShrink: 0,
         }),
       }}
       prevButton={({ currentStep, setCurrentStep }) => {
         return currentStep > 0 ? (
           <button
-            onClick={() => setCurrentStep(currentStep - 1)}
-            className="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            onClick={() => {
+              setCurrentStep(currentStep - 1);
+              // Reposition after step change
+              setTimeout(smartPositioning, 200);
+            }}
+            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors flex-shrink-0"
           >
             ← Back
           </button>
-        ) : null;
+        ) : <div className="w-16"></div>; // Placeholder to maintain layout
       }}
       nextButton={({ currentStep, setCurrentStep, setIsOpen, steps }) => {
         const isLast = currentStep === steps.length - 1;
@@ -356,9 +659,11 @@ const OnboardingTour = () => {
                 setIsOpen(false);
               } else {
                 setCurrentStep(currentStep + 1);
+                // Reposition after step change
+                setTimeout(smartPositioning, 200);
               }
             }}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors flex-shrink-0"
           >
             {isLast ? 'Start Trading!' : 'Next →'}
           </button>

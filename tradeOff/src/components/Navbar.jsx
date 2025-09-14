@@ -1,9 +1,11 @@
 import React from 'react';
 import { useGameContext } from '../context/GameContext';
+import { useOnboarding } from '../context/OnboardingContext';
 import logo from '../assets/RBC.svg';
 
 const Navbar = () => {
   const { gameTimer } = useGameContext();
+  const { triggerOnboarding } = useOnboarding();
   
   // Format timer display
   const formatTime = (seconds) => {
@@ -24,6 +26,18 @@ const Navbar = () => {
           </div>
 
           <div className="w-full md:w-auto flex items-center justify-end md:justify-end gap-4">
+            {/* Help/Tutorial Button */}
+            <button
+              onClick={triggerOnboarding}
+              aria-label="Start Tutorial"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="hidden sm:inline">Tutorial</span>
+            </button>
+            
             {/* Time Remaining Component - Left of profile picture, vertically centered */}
             <div className="flex items-center gap-2" data-tour="timer">
               <div className="text-gray-500 text-lg font-normal font-['Lato']">Time Remaining</div>
