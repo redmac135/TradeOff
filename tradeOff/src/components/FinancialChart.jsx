@@ -52,11 +52,26 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   const { candles } = useGameData();
   // set data source based on mode
 
+  // Add smooth transition states
+  const [cachedData, setCachedData] = useState([]);
+  const [isUpdating, setIsUpdating] = useState(false);
+
   // Use marketData from context, ensure it's always an array with valid data
   const dataSource = useMemo(() => {
+    // If demoData is provided (onboarding mode), use it
+    if (demoData && Array.isArray(demoData) && demoData.length > 0) {
+      return demoData.slice(-30).map((item, index) => ({
+        x: index,
+        h: item.h ?? item.High,
+        l: item.l ?? item.Low,
+        o: item.o ?? item.Open,
+        c: item.c ?? item.Close,
+      }));
+    }
+
+    // Otherwise, use the same logic as before
     const data = useMockData ? candles : (useMockData ? marketData : apiData);
     if (!Array.isArray(data)) return [];
-
 
     // Validate and clean data, and convert to sequential index instead of time-based
     const mapped = data.slice(-30).map((item, index) => ({
@@ -67,14 +82,50 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       c: item.c ?? item.Close,
     }));
 
-    // Convert to sequential indexing to avoid gaps
     return mapped;
-  }, [useMockData, marketData, apiData, demoData, candles]);
+  }, [useMockData, marketData, apiData, candles, demoData]);
+
+  // Smooth data updates with throttling
+  const smoothDataSource = useMemo(() => {
+    // Check if only the last candle has changed (common case for live updates)
+    if (cachedData.length > 0 && dataSource.length > 0) {
+      const lastCachedCandle = cachedData[cachedData.length - 1];
+      const lastNewCandle = dataSource[dataSource.length - 1];
+      
+      // If only the last candle values changed, smoothly update just that candle
+      if (cachedData.length === dataSource.length && 
+          lastCachedCandle && lastNewCandle &&
+          lastCachedCandle.x === lastNewCandle.x) {
+        
+        const smoothedData = [...cachedData];
+        smoothedData[smoothedData.length - 1] = { ...lastNewCandle };
+        
+        setCachedData(dataSource);
+        return smoothedData;
+      }
+    }
+    
+    setCachedData(dataSource);
+    return dataSource;
+  }, [dataSource, cachedData, setCachedData]);
+
+  // Throttle updates to prevent excessive re-renders
+  const [throttledData, setThrottledData] = useState(smoothDataSource);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setThrottledData(smoothDataSource);
+      setIsUpdating(false);
+    }, 100); // 100ms throttle for smooth updates
+
+    setIsUpdating(true);
+    return () => clearTimeout(timer);
+  }, [smoothDataSource, setIsUpdating]);
 
   // Calculate viewport for mobile scrolling
   const isMobile = window.innerWidth < 768;
-  const visiblePoints = isMobile ? 15 : dataSource.length;
-  const startIndex = isMobile ? Math.max(0, dataSource.length - visiblePoints) : 0;
+  const visiblePoints = isMobile ? 15 : throttledData.length;
+  const startIndex = isMobile ? Math.max(0, throttledData.length - visiblePoints) : 0;
 
   // Handle page visibility changes (when user switches tabs)
   useEffect(() => {
@@ -133,12 +184,12 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   // Force chart recreation when data changes significantly or after becoming visible
   useEffect(() => {
     const now = Date.now();
-    if (dataSource.length > 25 && now - lastResetTime > 60000 && isVisible) {
+    if (throttledData.length > 25 && now - lastResetTime > 60000 && isVisible) {
       console.log('Force updating chart due to data accumulation...');
       setChartKey(prev => prev + 1);
       setLastResetTime(now);
     }
-  }, [dataSource.length, lastResetTime, isVisible]);
+  }, [throttledData.length, lastResetTime, isVisible]);
 
   // Monitor chart health and recreate if needed
   useEffect(() => {
@@ -163,39 +214,61 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
     return () => clearInterval(healthCheck);
   }, [isVisible]);
 
-  // Calculate safe axis ranges
-  const { yMin, yMax, xMin, xMax } = useMemo(() => {
-    if (!dataSource || dataSource.length === 0) {
-      return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
+  // Calculate intelligent Y-axis range with smart zoom (same as mobile)
+  const { yMin, yMax, xMin, xMax, stepSize } = useMemo(() => {
+    if (!throttledData || throttledData.length === 0) {
+      return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30, stepSize: 100 };
     }
 
     try {
       // For mobile, only consider the visible range for Y-axis calculation
-      const dataForYAxis = isMobile ? dataSource.slice(startIndex) : dataSource;
+      const dataForYAxis = isMobile ? throttledData.slice(startIndex) : throttledData;
       
       // Get price ranges with safety checks
       const allHighs = dataForYAxis.map(d => Number(d.h)).filter(h => !isNaN(h));
       const allLows = dataForYAxis.map(d => Number(d.l)).filter(l => !isNaN(l));
       
       if (allHighs.length === 0 || allLows.length === 0) {
-        return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
+        return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30, stepSize: 100 };
       }
 
-      const currentMin = Math.min(...allLows);
-      const currentMax = Math.max(...allHighs);
+      const min = Math.min(...allLows);
+      const max = Math.max(...allHighs);
+      const range = max - min;
 
       // Ensure valid ranges
-      if (currentMin >= currentMax || !isFinite(currentMin) || !isFinite(currentMax)) {
-        return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
+      if (min >= max || !isFinite(min) || !isFinite(max)) {
+        return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30, stepSize: 100 };
       }
 
-      // Calculate padding (5% on each side, minimum $50)
-      const range = currentMax - currentMin;
-      const padding = Math.max(range * 0.05, 50);
+      // Intelligent padding based on range size (same as mobile)
+      let paddingPercent = 0.05; // Start with 5% padding
+      if (range < 10) paddingPercent = 0.15; // 15% for very small ranges
+      else if (range < 50) paddingPercent = 0.10; // 10% for small ranges
+      else if (range < 200) paddingPercent = 0.08; // 8% for medium ranges
 
-      // Round to nice numbers for better visualization
-      const yMin = Math.floor((currentMin - padding) / 10) * 10;
-      const yMax = Math.ceil((currentMax + padding) / 10) * 10;
+      const padding = range * paddingPercent;
+      const paddedMin = min - padding;
+      const paddedMax = max + padding;
+
+      // Intelligent step size calculation (same as mobile)
+      let stepSize;
+      if (range < 5) stepSize = 0.5;     // $0.50 steps for very small ranges
+      else if (range < 10) stepSize = 1;  // $1 steps for small ranges
+      else if (range < 25) stepSize = 2;  // $2 steps for small-medium ranges
+      else if (range < 50) stepSize = 5;  // $5 steps for medium ranges
+      else if (range < 100) stepSize = 10; // $10 steps for larger ranges
+      else if (range < 500) stepSize = 25; // $25 steps for large ranges
+      else stepSize = 50;                  // $50 steps for very large ranges
+
+      // Round bounds to nice numbers based on step size
+      const yMin = Math.floor(paddedMin / stepSize) * stepSize;
+      const yMax = Math.ceil(paddedMax / stepSize) * stepSize;
+      
+      // Reduce console logging for smoother performance
+      if (Math.random() < 0.1) { // Only log 10% of the time
+        console.log(`Desktop chart zoom info - Range: $${range.toFixed(2)}, Step: $${stepSize}, Min: $${yMin.toFixed(2)}, Max: $${yMax.toFixed(2)}`);
+      }
       
       // X-axis: For mobile, show viewport range; for desktop, show all data
       let xMin, xMax;
@@ -204,16 +277,16 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         xMax = startIndex + visiblePoints - 0.5;
       } else {
         xMin = -1;
-        xMax = Math.max(dataSource.length, 30);
+        xMax = Math.max(throttledData.length, 30);
       }
 
-      return { yMin, yMax, xMin, xMax };
+      return { yMin, yMax, xMin, xMax, stepSize };
 
     } catch (error) {
       console.error('Error calculating axis ranges:', error);
-      return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
+      return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30, stepSize: 100 };
     }
-  }, [dataSource, isMobile, startIndex, visiblePoints]);
+  }, [throttledData, isMobile, startIndex, visiblePoints]);
 
   // Stable chart data with error handling
   const chartData = useMemo(() => {
@@ -221,7 +294,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       const datasets = [
         {
           label: 'OHLC Data',
-          data: dataSource,
+          data: throttledData, // Use throttled data for smooth updates
           backgroundColors: {
             up: '#4ba03a',
             down: '#b91a0e',
@@ -251,8 +324,8 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         }
 
         // Create horizontal line data across the entire chart width
-        const xMin = dataSource.length > 0 ? Math.min(...dataSource.map(d => d.x)) : 0;
-        const xMax = dataSource.length > 0 ? Math.max(...dataSource.map(d => d.x)) : 30;
+        const xMin = throttledData.length > 0 ? Math.min(...throttledData.map(d => d.x)) : 0;
+        const xMax = throttledData.length > 0 ? Math.max(...throttledData.map(d => d.x)) : 30;
 
         datasets.push({
           label: `${position.type.toUpperCase()} Entry - $${position.entryPrice.toFixed(2)}`,
@@ -281,13 +354,23 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       setChartError('Failed to create chart data');
       return { datasets: [] };
     }
-  }, [dataSource, positions, currentMarketPrice, calculatePositionPnL]);
+  }, [throttledData, positions, currentMarketPrice, calculatePositionPnL]);
 
   // Enhanced options with better error handling and performance
   const options = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
-    animation: false,
+    animation: {
+      duration: isUpdating ? 150 : 0, // Smooth but fast animation when updating
+      easing: 'easeOutQuart',
+    },
+    transitions: {
+      active: {
+        animation: {
+          duration: 100
+        }
+      }
+    },
     resizeDelay: 0,
     parsing: false,
     normalized: true,
@@ -315,11 +398,14 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
           },
           label: function(context) {
             const point = context.raw;
+            // More precise formatting based on the data range (same as mobile)
+            const precision = stepSize < 1 ? 3 : (stepSize < 10 ? 2 : 2);
             return [
-              `Open: $${point.o.toFixed(2)}`,
-              `High: $${point.h.toFixed(2)}`,
-              `Low: $${point.l.toFixed(2)}`,
-              `Close: $${point.c.toFixed(2)}`
+              `Open: $${point.o.toFixed(precision)}`,
+              `High: $${point.h.toFixed(precision)}`,
+              `Low: $${point.l.toFixed(precision)}`,
+              `Close: $${point.c.toFixed(precision)}`,
+              `Range: $${(point.h - point.l).toFixed(precision)}`
             ];
           }
         }
@@ -333,8 +419,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
           onPanComplete: ({ chart }) => {
             // Ensure we don't pan beyond data bounds
             const xScale = chart.scales.x;
-            const dataLength = dataSource.length;
-            
+            const dataLength = throttledData.length;
             if (xScale.min < -1) {
               xScale.options.min = -1;
               chart.update('none');
@@ -393,13 +478,22 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
           lineWidth: 1,
         },
         ticks: {
-          maxTicksLimit: window.innerWidth < 768 ? 4 : 6,
+          maxTicksLimit: window.innerWidth < 768 ? 8 : 10, // More ticks for better granularity
           color: '#6b7280',
           font: {
-            size: window.innerWidth < 768 ? 10 : 12,
+            size: window.innerWidth < 768 ? 11 : 12,
+            weight: '500'
           },
+          stepSize: stepSize, // Use intelligent step size
           callback: function(value) {
-            return '$' + value.toLocaleString();
+            // Format based on step size for better readability (same as mobile)
+            if (stepSize < 1) {
+              return '$' + value.toFixed(2); // Show cents for very small steps
+            } else if (stepSize < 10) {
+              return '$' + value.toFixed(1); // Show one decimal for small steps
+            } else {
+              return '$' + Math.round(value); // Show whole numbers for larger steps
+            }
           }
         },
         border: {
@@ -422,7 +516,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
       }
     },
-  }), [yMin, yMax, xMin, xMax, isMobile, dataSource.length]);
+  }), [yMin, yMax, xMin, xMax, isMobile, throttledData.length, stepSize, isUpdating]);
 
   // Enhanced error boundary for chart rendering
   const renderChart = useCallback(() => {
@@ -445,7 +539,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         );
       }
 
-      if (!dataSource || dataSource.length === 0) {
+      if (!throttledData || throttledData.length === 0) {
         return (
           <div className="flex items-center justify-center h-full text-gray-500">
             Loading chart data...
@@ -502,13 +596,13 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         </div>
       );
     }
-  }, [chartKey, forceRerender, chartData, options, dataSource, isVisible, chartError]);
+  }, [chartKey, forceRerender, chartData, options, throttledData, isVisible, chartError]);
 
   return (
-    <div ref={containerRef} className="w-full flex-1 bg-gray-50 rounded-[10px] shadow-lg flex flex-col overflow-hidden relative">
+    <div ref={containerRef} className="w-full h-full bg-gray-50 rounded-[10px] shadow-lg flex flex-col overflow-hidden relative">
       
       {/* Scroll hint for mobile */}
-      {isMobile && dataSource.length > visiblePoints && (
+      {isMobile && throttledData.length > visiblePoints && (
         <div className="absolute bottom-2 right-2 z-10">
           <div className="px-2 py-1 bg-black/50 rounded text-white text-xs">
             ← Swipe to scroll →
@@ -516,8 +610,8 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         </div>
       )}
       
-      {/* Chart Container */}
-      <div className={`relative h-48 md:h-64 lg:h-80 xl:h-96 w-full p-2 md:p-4 ${isMobile ? 'overflow-x-auto overflow-y-hidden' : ''}`}>
+      {/* Chart Container - Adaptive height that fills available space */}
+      <div className={`relative flex-1 w-full p-2 md:p-4 min-h-0 ${isMobile ? 'overflow-x-auto overflow-y-hidden' : ''}`}>
         <div className={isMobile ? 'w-[200%] h-full' : 'w-full h-full'}>
           {renderChart()}
         </div>

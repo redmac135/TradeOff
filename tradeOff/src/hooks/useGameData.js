@@ -13,6 +13,8 @@ export function useGameData() {
 
     async function fetchUpdates() {
       try {
+        console.log('Fetching updates from DynamoDB...');
+
         // Fetch latest candles
         const candleRes = await ddb.send(
           new QueryCommand({
@@ -35,10 +37,16 @@ export function useGameData() {
           })
         );
 
-        if (candleRes.Items) setCandles(candleRes.Items.reverse());
+        console.log('DynamoDB response - candles:', candleRes.Items?.length || 0, 'news:', newsRes.Items?.length || 0);
+        
+        if (candleRes.Items) {
+          console.log('Sample candle from DynamoDB:', candleRes.Items[0]);
+          setCandles(candleRes.Items.reverse());
+        }
         if (newsRes.Items) setNews(newsRes.Items);
       } catch (err) {
         console.error("Error fetching updates:", err);
+        console.error("Error details:", err.message);
       }
     }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { GameContext } from './context/GameContext';
 import { OnboardingProvider, useOnboarding } from './context/OnboardingContext';
+import { useGameData } from './hooks/useGameData'; // Import the live data hook
 import Navbar from './components/Navbar';
 import FinancialChart from './components/FinancialChart';
 import MarketNews from './components/MarketNews';
@@ -15,6 +16,9 @@ function GameApp() {
   // Get onboarding state to pause timer during onboarding
   const { isOnboardingActive } = useOnboarding();
   
+  // Connect to live data from DynamoDB
+  const { candles, news: liveNewsItems } = useGameData();
+  
   // Centralized State Management
   const [cash, setCash] = useState(50000); // Starting cash
   const [positions, setPositions] = useState([]); // Array of open trades
@@ -25,8 +29,39 @@ function GameApp() {
   const [isPageVisible, setIsPageVisible] = useState(true); // Track page visibility
   const [realizedPnL, setRealizedPnL] = useState(0); // Track realized P&L from closed positions
 
-  // Always use mock data for now (can be changed internally later)
-  const useMockData = false;
+  // Sync live data from DynamoDB to local state for trading
+  useEffect(() => {
+    if (candles && candles.length > 0) {
+      console.log('Updating marketData with live candles:', candles.length, 'items');
+      console.log('Sample candle structure:', candles[0]);
+      console.log('Sample candle keys:', Object.keys(candles[0]));
+      setMarketData(candles);
+    } else {
+      console.log('No candles data available from useGameData hook');
+      
+      // Fallback: create some initial mock data if no live data is available
+      if (marketData.length === 0) {
+        console.log('Creating fallback market data...');
+        const fallbackData = [{
+          EntityType: "OHLCV",
+          EntityID: "fallback",
+          Open: 9000,
+          High: 9050,
+          Low: 8950,
+          Close: 9000,
+          Volume: 1000
+        }];
+        setMarketData(fallbackData);
+      }
+    }
+  }, [candles, marketData.length]);
+
+  useEffect(() => {
+    if (liveNewsItems && liveNewsItems.length > 0) {
+      console.log('Updating newsItems with live news:', liveNewsItems.length, 'items');
+      setNewsItems(liveNewsItems);
+    }
+  }, [liveNewsItems]);
 
   // Handle page visibility changes
   useEffect(() => {
@@ -49,8 +84,18 @@ function GameApp() {
 
   // Current market price (latest close price)
   const currentMarketPrice = useMemo(() => {
-    if (marketData.length === 0) return 0;
-    return marketData[marketData.length - 1].c;
+    if (marketData.length === 0) {
+      console.log('No market data available for pricing');
+      return 0;
+    }
+    
+    const lastCandle = marketData[marketData.length - 1];
+    // Handle both lowercase (chart format) and uppercase (DynamoDB format) fields
+    const price = lastCandle.c || lastCandle.Close || lastCandle.close;
+    
+    console.log('Current market price calculated:', price, 'from', marketData.length, 'candles');
+    console.log('Last candle fields:', Object.keys(lastCandle));
+    return Number(price) || 0;
   }, [marketData]);
 
   // Calculate profit/loss for a position
@@ -187,77 +232,9 @@ function GameApp() {
     return { totalReturn, totalProfitLoss };
   };
 
-  // Update market data every 5 seconds (simulating real-time data)
-  useEffect(() => {
-    if (!useMockData) return;
 
-    const interval = setInterval(() => {
-      // Only update when page is visible to prevent issues when tab is inactive
-      if (!isPageVisible) {
-        console.log('Skipping market data update - page not visible');
-        return;
-      }
-
-      setMarketData(prevData => {
-        try {
-          const newData = [...prevData];
-          const lastCandle = newData[newData.length - 1];
-          
-          if (!lastCandle || typeof lastCandle.c !== 'number') {
-            console.warn('Invalid last candle data, skipping update');
-            return prevData;
-          }
-          
-          // Generate new candlestick data with better constraints
-          const open = Number(lastCandle.c);
-          const volatility = Math.min(200, Math.max(50, Math.abs(open) * 0.02)); // 2% volatility
-          const priceChange = (Math.random() - 0.5) * volatility;
-          const close = Number((open + priceChange).toFixed(2));
-          
-          // Ensure valid high/low values
-          const tempHigh = Math.max(open, close) + Math.random() * (volatility * 0.25);
-          const tempLow = Math.min(open, close) - Math.random() * (volatility * 0.25);
-          
-          const high = Number(tempHigh.toFixed(2));
-          const low = Number(tempLow.toFixed(2));
-
-          // Validate the data before adding
-          if (!isFinite(open) || !isFinite(high) || !isFinite(low) || !isFinite(close) ||
-              high < Math.max(open, close) || low > Math.min(open, close)) {
-            console.warn('Generated invalid candle data, skipping update');
-            return prevData;
-          }
-
-          // Add new candle with sequential index
-          const newCandle = {
-            x: newData.length, // Use sequential index
-            o: open,
-            h: high,
-            l: low,
-            c: close,
-          };
-
-          newData.push(newCandle);
-
-          // Keep only last 30 candles for performance and prevent memory issues
-          const trimmedData = newData.slice(-30);
-          
-          // Re-index the trimmed data to maintain sequential order
-          const reindexedData = trimmedData.map((item, index) => ({
-            ...item,
-            x: index
-          }));
-          
-          return reindexedData;
-        } catch (error) {
-          console.error('Error updating market data:', error);
-          return prevData;
-        }
-      });
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [useMockData, isPageVisible]);
+  // Remove mock data generation - using live data from DynamoDB now
+  // (Mock data generation code removed since useMockData = false)
 
   // Game timer countdown (pause when page is not visible or during onboarding)
   useEffect(() => {
