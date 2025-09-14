@@ -20,6 +20,7 @@ import {
 } from 'chartjs-chart-financial';
 import { Chart } from 'react-chartjs-2';
 import 'chartjs-adapter-date-fns';
+import { useGameData } from '../hooks/useGameData';
 
 // Register Chart.js components
 ChartJS.register(
@@ -47,6 +48,9 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [chartError, setChartError] = useState(null);
   const [forceRerender, setForceRerender] = useState(0);
+
+  const { candles } = useGameData();
+  // set data source based on mode
 
   // Use marketData from context, ensure it's always an array with valid data
   const dataSource = useMemo(() => {
