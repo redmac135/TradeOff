@@ -1,12 +1,9 @@
-import React from 'react';
-import { useGameContext } from '../context/GameContext';
+import React, { useMemo } from 'react';
 import { Newspaper } from 'lucide-react';
+import { useGameData } from '../hooks/useGameData';
 
 const MarketNews = ({ demoData }) => {
-  const { newsItems } = useGameContext();
-  
-  // Use demo data if provided, otherwise use real news items
-  const displayNewsItems = demoData || newsItems;
+  const { news } = useGameData();
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -26,15 +23,15 @@ const MarketNews = ({ demoData }) => {
       <div className="w-full h-px bg-gray-300 flex-shrink-0"></div>
       
       <div className="w-full flex-1 flex flex-col gap-4 overflow-y-auto pr-2 min-h-0">
-        {displayNewsItems.map((item, index) => (
+        {[...news].reverse().map((item, index) => (
           <div key={index} className="w-full flex flex-col justify-start items-start gap-2">
             <div className="w-full flex justify-start items-start gap-3">
-              <div className={`text-lg font-medium font-['Roboto_Flex'] ${getPriorityColor(item.priority)}`}>
-                {item.title}
+              <div className={`text-lg font-medium font-['Roboto_Flex'] ${getPriorityColor('high')}`}>
+                {item.Headline}
               </div>
             </div>
-            <div className={`w-full text-sm font-normal font-['Roboto_Flex'] ${getPriorityColor(item.priority)}`}>
-              {item.description}
+            <div className={`w-full text-sm font-normal font-['Roboto_Flex'] ${getPriorityColor('high')}`}>
+              {item.Summary}
             </div>
           </div>
         ))}

@@ -36,7 +36,7 @@ export function useGameData() {
         );
 
         if (candleRes.Items) setCandles(candleRes.Items.reverse());
-        if (newsRes.Items) setNews(newsRes.Items.reverse());
+        if (newsRes.Items) setNews(newsRes.Items);
       } catch (err) {
         console.error("Error fetching updates:", err);
       }

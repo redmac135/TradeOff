@@ -11,52 +11,6 @@ import OnboardingPromptModal from './components/OnboardingPromptModal';
 import OnboardingTour from './components/OnboardingTour';
 import './App.css';
 
-// Generate initial mock market data
-const generateInitialMarketData = () => {
-  const data = [];
-  let lastClose = 9000;
-
-  for (let i = 0; i < 30; i++) {
-    const open = +(lastClose + (Math.random() - 0.5) * 100).toFixed(2);
-    const close = +(open + (Math.random() - 0.5) * 200).toFixed(2);
-    const high = +(Math.max(open, close) + Math.random() * 50).toFixed(2);
-    const low = +(Math.min(open, close) - Math.random() * 50).toFixed(2);
-
-    data.push({
-      x: i, // Use sequential index instead of timestamp
-      o: open,
-      h: high,
-      l: low,
-      c: close,
-    });
-    
-    lastClose = close;
-  }
-  return data;
-};
-
-// Initial news items
-const initialNewsItems = [
-  {
-    title: "Housing prices in Toronto up by 5%.",
-    description: "Lorem ipsum is a placeholder text used in graphic design, publishing, and web development.",
-    priority: "high",
-    timestamp: Date.now()
-  },
-  {
-    title: "Tech stocks showing strong performance.",
-    description: "Lorem ipsum is a placeholder text used in graphic design, publishing, and web development.",
-    priority: "medium",
-    timestamp: Date.now() - 60000
-  },
-  {
-    title: "Bank of Canada announces interest rate decision.",
-    description: "Lorem ipsum is a placeholder text used in graphic design, publishing, and web development.",
-    priority: "medium",
-    timestamp: Date.now() - 120000
-  }
-];
-
 function GameApp() {
   // Get onboarding state to pause timer during onboarding
   const { isOnboardingActive } = useOnboarding();
@@ -64,8 +18,8 @@ function GameApp() {
   // Centralized State Management
   const [cash, setCash] = useState(50000); // Starting cash
   const [positions, setPositions] = useState([]); // Array of open trades
-  const [marketData, setMarketData] = useState(generateInitialMarketData); // Chart data
-  const [newsItems, setNewsItems] = useState(initialNewsItems); // News headlines
+  const [marketData, setMarketData] = useState([]); // Chart data
+  const [newsItems, setNewsItems] = useState([]); // News headlines
   const [gameTimer, setGameTimer] = useState(180); // 180 seconds countdown
   const [userGoal, setUserGoal] = useState({ name: 'First Car', amount: 15000 }); // User goal
   const [isPageVisible, setIsPageVisible] = useState(true); // Track page visibility
