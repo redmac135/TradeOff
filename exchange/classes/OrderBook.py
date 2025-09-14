@@ -58,6 +58,6 @@ class OrderBook:
         }
 
         if reset:
-            self.current_candle = []
+            self.current_candle = [prices[-1]]
 
         return candle
