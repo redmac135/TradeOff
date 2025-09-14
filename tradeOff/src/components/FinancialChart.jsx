@@ -54,7 +54,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
 
   // Use marketData from context, ensure it's always an array with valid data
   const dataSource = useMemo(() => {
-    const data = demoData || (useMockData ? marketData : apiData);
+    const data = useMockData ? candles : (useMockData ? marketData : apiData);
     if (!Array.isArray(data)) return [];
     
     // Validate and clean data, and convert to sequential index instead of time-based
@@ -76,7 +76,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       ...item,
       x: index // Use sequential index instead of timestamp
     }));
-  }, [useMockData, marketData, apiData, demoData]);
+  }, [useMockData, marketData, apiData, demoData, candles]);
 
   // Handle page visibility changes (when user switches tabs)
   useEffect(() => {
@@ -541,7 +541,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
     <div ref={containerRef} className="w-full flex-1 bg-gray-50 rounded-[10px] shadow-lg p-6 flex flex-col overflow-hidden">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-800">
-          Financial Chart - {useMockData ? 'Live Mock Data (Sequential Updates)' : 'API Data'}
+          Financial Chart - {useMockData ? 'Live Mock Data (Sequential Updates)' : 'Live Data'}
           {!isVisible && ' - PAUSED'}
         </h3>
         <p className="text-sm text-gray-600">
