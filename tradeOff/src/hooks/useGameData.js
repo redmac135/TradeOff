@@ -22,7 +22,7 @@ export function useGameData() {
             KeyConditionExpression: "EntityType = :etype",
             ExpressionAttributeValues: { ":etype": "OHLCV" },
             ScanIndexForward: false, // newest first
-            Limit: 20,
+            Limit: 50,
           })
         );
 

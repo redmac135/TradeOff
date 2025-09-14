@@ -48,10 +48,14 @@ class OrderBook:
 
     def get_prev_close(self):
         """Return last trade price, or None if no trades yet."""
-        if self.trades:
-            return self.trades[-1]
         if self.last_candle:
             return self.last_candle["close"]
+        return BASE_PRICE
+
+    def get_last_price(self):
+        """Return last trade price, or None if no trades yet."""
+        if self.trades:
+            return self.trades[-1]
         return BASE_PRICE
 
     def get_candle(self, reset=True):
