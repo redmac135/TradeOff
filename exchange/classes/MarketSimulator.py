@@ -56,38 +56,57 @@ class MarketSimulator:
             if not self.running:
                 break
 
-            # snapshot the candle index + sentiment and avoid duplicate processing
             candle_idx, sentiment_snapshot = self._snapshot_state()
             if candle_idx == 0 or candle_idx == self._last_order_processed:
-                # nothing to do this tick (or already processed)
                 self.order_event.clear()
                 continue
 
-            # generate a batch of orders for this candle
-            num_orders = random.randint(50, 100)
-            true_p = self._true_price_for(candle_idx, sentiment_snapshot)
-            spread = BOT_ORDER_SPREAD_PERCENT / 100.0
+            # Use last traded price or fallback to base
+            last_price = self.order_book.get_last_price() or self.base_price
+
+            # Liquidity pressure toward base price
+            deviation = (last_price - self.base_price) / self.base_price
+            # Base buy probability
+            buy_prob = 0.5
+
+            # Momentum effect (slight bias if last candle up/down)
+            prev_close = self.order_book.get_prev_close() or last_price
+            if last_price > prev_close:
+                buy_prob += 0.05  # tilt upward momentum
+            else:
+                buy_prob -= 0.05  # tilt downward momentum
+
+            # Liquidity reversion (push back toward base)
+            buy_prob -= deviation * 2  # stronger deviation = stronger push back
+
+            # sentiment effect
+            buy_prob += sentiment_snapshot * SENTIMENT_IMPACT
+
+            # Clamp to keep probabilities sane
+            buy_prob = max(0.1, min(0.9, buy_prob))
+
+            # Generate orders based on severity of sentiment
+            num_orders = random.randint(25, 50) * int(1 + abs(sentiment_snapshot) * 3)
+            spread = 0.01  # +/-1% around last price
 
             for _ in range(num_orders):
-                side = "buy" if random.random() < 0.5 else "sell"
-                price_variation = true_p * random.uniform(-spread, spread)
-                price = true_p + price_variation
+                side = "buy" if random.random() < buy_prob else "sell"
+                price_variation = last_price * random.uniform(-spread, spread)
+                price = max(0.01, last_price + price_variation)  # never let price go <= 0
                 self.order_book.add_order(side, price)
 
-            # build the candle from the order book and push to DB
+            # Build candle and push to DB
             candle = self.order_book.get_candle()
-            # push_candle_data is expected to accept the candle dict
             try:
                 self.db_handler.push_candle_data(candle)
             except Exception as e:
-                # keep running — log the exception
                 print(f"Warning: push_candle_data failed for candle {candle_idx}: {e}")
 
             print(f"[OrderThread] Candle {candle_idx} generated and pushed: {candle}")
 
-            # mark processed and clear the event for the next tick
             self._last_order_processed = candle_idx
             self.order_event.clear()
+
 
     def news_loop(self):
         """
@@ -154,6 +173,9 @@ class MarketSimulator:
                     # increment the canonical candle index
                     self.candle_count += 1
 
+                    # move the sentiment slightly toward 0 (decay)
+                    self.sentiment *= 0.80
+
                 # broadcast tick to workers
                 # workers snapshot the candle_count themselves
                 self.order_event.set()
@@ -172,5 +194,5 @@ class MarketSimulator:
             order_thread.join(timeout=2.0)
             news_thread.join(timeout=2.0)
 
-            self.db_handler.reset_tables()
+            # self.db_handler.reset_tables()
             print("Simulation complete.")

@@ -20,10 +20,14 @@ def main():
 
     while True:
         try:
-            if db_handler.get_is_ingame():
+            if True:
                 print("[Backend] Game start detected! Running market simulator...")
                 market_simulator.run()
                 print("[Backend] Market simulator finished. Waiting for next game...")
+
+                # reset orderbook and marketsimulator for next game
+                order_book = OrderBook()
+                market_simulator = MarketSimulator(order_book=order_book, news_generator=news_generator, db_handler=db_handler)
             else:
                 # no game yet → sleep briefly before checking again
                 time.sleep(1)
