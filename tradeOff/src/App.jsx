@@ -14,6 +14,7 @@ import { OnboardingContainer } from './onboarding';
 import EndgameOverlay from './endgame/EndgameOverlay';
 import EndgameResults from './endgame/EndgameResults';
 import './App.css';
+import { stopGame } from './aws/gameApi';
 
 function GameApp() {
   // Get onboarding state to pause timer during onboarding
@@ -35,19 +36,12 @@ function GameApp() {
   const [positions, setPositions] = useState([]); // Array of open trades
   const [marketData, setMarketData] = useState([]); // Chart data
   const [newsItems, setNewsItems] = useState([]); // News headlines
-  const [gameTimer, setGameTimer] = useState(180); // 180 seconds = 3 minutes countdown
+  const [gameTimer, setGameTimer] = useState(60); // 60 seconds = 1 minute countdown
   const [userGoal, setUserGoal] = useState({ name: 'First Car', amount: 15000 }); // User goal
   const [isPageVisible, setIsPageVisible] = useState(true); // Track page visibility
   const [realizedPnL, setRealizedPnL] = useState(0); // Track realized P&L from closed positions
   const [showEndgame, setShowEndgame] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  
-  // Track InvestEase amount that grows over time
-  const [investEaseAmount, setInvestEaseAmount] = useState(() => {
-    const startingCash = Number(localStorage.getItem('startingCash')) || 50000;
-    return startingCash; // Start with initial amount
-  });
-  
   // Risk tolerance (0-100) - initialized from localStorage if available
   const [riskTolerance, setRiskTolerance] = useState(() => {
     const stored = localStorage.getItem('riskTolerance');
@@ -313,6 +307,7 @@ function GameApp() {
   useEffect(() => {
     if (gameTimer === 0) {
       setShowEndgame(true);
+      stopGame();
     }
   }, [gameTimer]);
 
@@ -329,23 +324,9 @@ function GameApp() {
   // When tutorial (onboarding tour) ends, reset timer back to 3 minutes
   useEffect(() => {
     if (!isOnboardingActive) {
-      setGameTimer(180);
-      // Reset InvestEase amount when game starts
-      const startingCash = Number(localStorage.getItem('startingCash')) || 50000;
-      setInvestEaseAmount(startingCash);
+  setGameTimer(60);
     }
   }, [isOnboardingActive]);
-
-  // Update InvestEase amount gradually as time passes
-  useEffect(() => {
-    if (gameTimer <= 180 && gameTimer >= 0) {
-      const startingCash = Number(localStorage.getItem('startingCash')) || 50000;
-      const maxGrowth = startingCash * 0.1; // 10% growth target
-      const timeProgress = (180 - gameTimer) / 180; // Progress from 0 to 1
-      const currentGrowth = maxGrowth * timeProgress;
-      setInvestEaseAmount(startingCash + currentGrowth);
-    }
-  }, [gameTimer]);
 
   // Simulate occasional news updates
   useEffect(() => {
