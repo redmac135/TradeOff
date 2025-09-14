@@ -232,6 +232,7 @@ function GameApp() {
     return { totalReturn, totalProfitLoss };
   };
 
+
   // Remove mock data generation - using live data from DynamoDB now
   // (Mock data generation code removed since useMockData = false)
 

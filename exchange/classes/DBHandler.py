@@ -59,7 +59,7 @@ class DBHandler:
         Expects data = { "Open":..., "High":..., "Low":..., "Close":..., "Volume":... }
         Converts floats to Decimal (2 dp).
         """
-        timestamp = str(int(time.time()))
+        timestamp = str(int(time.time() * 1000))
         item = {
             "EntityType": "OHLCV",
             "EntityID": timestamp,

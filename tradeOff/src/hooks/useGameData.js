@@ -14,7 +14,7 @@ export function useGameData() {
     async function fetchUpdates() {
       try {
         console.log('Fetching updates from DynamoDB...');
-        
+
         // Fetch latest candles
         const candleRes = await ddb.send(
           new QueryCommand({

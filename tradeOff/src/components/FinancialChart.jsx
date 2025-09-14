@@ -420,7 +420,6 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
             // Ensure we don't pan beyond data bounds
             const xScale = chart.scales.x;
             const dataLength = throttledData.length;
-            
             if (xScale.min < -1) {
               xScale.options.min = -1;
               chart.update('none');
