@@ -12,3 +12,194 @@ body {
 	margin: 0;
 }
 
+/* COMPREHENSIVE TOUR POSITIONING SYSTEM - UNIVERSAL FIX */
+
+/* Force tour elements to use proper stacking context */
+[data-tour-elem] {
+	isolation: isolate;
+}
+
+/* Core popover positioning - overrides library defaults completely */
+[data-tour-elem="popover"] {
+	/* Essential styling */
+	z-index: 99999 !important;
+	background: white !important;
+	border: 1px solid rgba(0, 0, 0, 0.1) !important;
+	box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+	border-radius: 12px !important;
+	
+	/* CRITICAL: Force fixed positioning to bypass library positioning issues */
+	position: fixed !important;
+	
+	/* Responsive sizing with proper constraints */
+	width: auto !important;
+	min-width: 280px !important;
+	max-width: min(480px, calc(100vw - 40px)) !important;
+	max-height: calc(100vh - 80px) !important;
+	
+	/* Ensure content is accessible */
+	box-sizing: border-box !important;
+	overflow-y: auto !important;
+	overflow-x: hidden !important;
+	
+	/* Prevent any transform interference */
+	transform: none !important;
+	
+	/* Add padding for better mobile experience */
+	padding: 20px !important;
+	
+	/* Smooth visual transition */
+	opacity: 0.9 !important;
+	visibility: visible !important;
+}
+
+/* Enhanced visibility when positioning is complete */
+[data-tour-elem="popover"].tour-positioned {
+	opacity: 1 !important;
+	transition: opacity 0.3s ease-out !important;
+}
+
+/* Mask positioning */
+[data-tour-elem="mask"] {
+	z-index: 99998 !important;
+	position: fixed !important;
+}
+
+/* Badge positioning */
+[data-tour-elem="badge"] {
+	z-index: 100001 !important;
+	background: #2563eb !important;
+	color: white !important;
+	border: 2px solid white !important;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+	position: fixed !important;
+	width: 24px !important;
+	height: 24px !important;
+	border-radius: 50% !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	font-size: 12px !important;
+	font-weight: 600 !important;
+}
+
+/* Tour container class for JavaScript positioning control */
+.tour-provider [data-tour-elem="popover"] {
+	/* Viewport-specific responsive sizing */
+	min-width: 280px !important;
+	width: auto !important;
+}
+
+/* Navigation dots styling */
+.tour-provider [data-tour-elem="navigation"] {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	gap: 6px !important;
+	margin: 16px 0 0 0 !important;
+}
+
+.tour-provider [data-tour-elem="dot"] {
+	width: 8px !important;
+	height: 8px !important;
+	border-radius: 50% !important;
+	margin: 0 !important;
+	flex-shrink: 0 !important;
+	transition: all 0.2s ease !important;
+}
+
+/* RESPONSIVE BREAKPOINTS - Mobile-first approach */
+
+/* Large tablets and small desktops */
+@media (max-width: 1024px) {
+	[data-tour-elem="popover"] {
+		max-width: min(420px, calc(100vw - 32px)) !important;
+		padding: 18px !important;
+	}
+}
+
+/* Tablets */
+@media (max-width: 768px) {
+	[data-tour-elem="popover"] {
+		min-width: 260px !important;
+		max-width: calc(100vw - 24px) !important;
+		max-height: calc(100vh - 60px) !important;
+		padding: 16px !important;
+		font-size: 15px !important;
+	}
+}
+
+/* Large phones */
+@media (max-width: 640px) {
+	[data-tour-elem="popover"] {
+		min-width: 240px !important;
+		max-width: calc(100vw - 20px) !important;
+		max-height: calc(100vh - 50px) !important;
+		padding: 14px !important;
+		font-size: 14px !important;
+	}
+}
+
+/* Standard phones */
+@media (max-width: 480px) {
+	[data-tour-elem="popover"] {
+		min-width: 220px !important;
+		max-width: calc(100vw - 16px) !important;
+		max-height: calc(100vh - 40px) !important;
+		padding: 12px !important;
+		font-size: 14px !important;
+	}
+	
+	[data-tour-elem="badge"] {
+		width: 20px !important;
+		height: 20px !important;
+		font-size: 11px !important;
+	}
+}
+
+/* Small phones */
+@media (max-width: 380px) {
+	[data-tour-elem="popover"] {
+		min-width: 200px !important;
+		max-width: calc(100vw - 12px) !important;
+		max-height: calc(100vh - 30px) !important;
+		padding: 10px !important;
+		font-size: 13px !important;
+	}
+}
+
+/* Very small screens */
+@media (max-width: 320px) {
+	[data-tour-elem="popover"] {
+		min-width: 180px !important;
+		max-width: calc(100vw - 8px) !important;
+		max-height: calc(100vh - 20px) !important;
+		padding: 8px !important;
+		font-size: 12px !important;
+	}
+	
+	[data-tour-elem="badge"] {
+		width: 18px !important;
+		height: 18px !important;
+		font-size: 10px !important;
+	}
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+	[data-tour-elem="popover"] {
+		max-height: calc(100vh - 20px) !important;
+		padding: 8px !important;
+		font-size: 13px !important;
+	}
+}
+
+/* High DPI display adjustments */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+	[data-tour-elem="popover"] {
+		/* Ensure crisp rendering on high DPI displays */
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+}
+

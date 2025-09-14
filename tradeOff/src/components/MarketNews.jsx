@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGameContext } from '../context/GameContext';
+import { Newspaper } from 'lucide-react';
 
 const MarketNews = ({ demoData }) => {
   const { newsItems } = useGameContext();
@@ -18,13 +19,16 @@ const MarketNews = ({ demoData }) => {
 
   return (
     <div className="w-full h-full p-6 relative bg-gray-50 rounded-[10px] shadow-[4px_4px_20px_0px_rgba(0,0,0,0.05)] flex flex-col gap-2.5 overflow-hidden">
-      <div className="text-blue-600 text-4xl font-normal font-['Lato'] flex-shrink-0">News Feed</div>
+      <div className="text-blue-600 text-4xl font-normal font-['Lato'] flex-shrink-0 flex items-center gap-3">
+        <Newspaper className="text-blue-600" size={36} />
+        <span>News Feed</span>
+      </div>
       <div className="w-full h-px bg-gray-300 flex-shrink-0"></div>
       
       <div className="w-full flex-1 flex flex-col gap-4 overflow-y-auto pr-2 min-h-0">
         {displayNewsItems.map((item, index) => (
           <div key={index} className="w-full flex flex-col justify-start items-start gap-2">
-            <div className="w-full flex justify-start items-start gap-2">
+            <div className="w-full flex justify-start items-start gap-3">
               <div className={`text-lg font-medium font-['Roboto_Flex'] ${getPriorityColor(item.priority)}`}>
                 {item.title}
               </div>

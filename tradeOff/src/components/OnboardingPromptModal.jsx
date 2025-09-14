@@ -26,11 +26,11 @@ const OnboardingPromptModal = () => {
           </div>
 
           <h3 className="text-lg font-semibold text-gray-900 mb-3 text-center">
-            New to trading simulations?
+            Want to take the interactive tutorial?
           </h3>
           
           <p className="text-gray-600 text-center mb-6 leading-relaxed">
-            Take our interactive tour to learn how to:
+            Take our guided tour to learn (or review) how to:
           </p>
 
           <div className="space-y-2 mb-6">
