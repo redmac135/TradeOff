@@ -58,14 +58,14 @@ const MarketNews = ({ demoData }) => {
       </div>
 
   {/* Mobile Layout */}
-  <div className="md:hidden w-96 h-40 relative" data-tour="news-feed news-primary">
+  <div className="md:hidden w-full max-w-sm h-40 relative mx-auto" data-tour="news-feed news-primary">
         {/* Background cards for stacked effect - positioned to look like cards underneath */}
-        <div className="w-96 h-28 p-4 left-[12px] top-[28px] absolute bg-gray-100 rounded-lg shadow-[2px_2px_12px_0px_rgba(0,0,0,0.08)] transform rotate-[1deg]" />
-        <div className="w-96 h-28 p-4 left-[8px] top-[22px] absolute bg-gray-200 rounded-lg shadow-[3px_3px_15px_0px_rgba(0,0,0,0.12)] transform rotate-[-0.5deg]" />
-        <div className="w-96 h-28 p-4 left-[4px] top-[16px] absolute bg-gray-300 rounded-lg shadow-[4px_4px_18px_0px_rgba(0,0,0,0.15)] transform rotate-[0.8deg]" />
+        <div className="w-full h-28 p-4 left-3 top-7 absolute bg-gray-100 rounded-lg shadow-[2px_2px_12px_0px_rgba(0,0,0,0.08)] transform rotate-[1deg] z-10" />
+        <div className="w-full h-28 p-4 left-2 top-5 absolute bg-gray-200 rounded-lg shadow-[3px_3px_15px_0px_rgba(0,0,0,0.12)] transform -rotate-1 z-20" />
+        <div className="w-full h-28 p-4 left-1 top-4 absolute bg-gray-300 rounded-lg shadow-[4px_4px_18px_0px_rgba(0,0,0,0.15)] transform rotate-[0.8deg] z-30" />
         
         {/* Main card - top of the stack */}
-        <div className="w-96 p-4 left-0 top-0 absolute bg-white rounded-[10px] shadow-[6px_6px_25px_0px_rgba(0,0,0,0.20)] inline-flex flex-col justify-start items-start gap-2.5 overflow-hidden transform hover:scale-105 transition-transform duration-200">
+        <div className="w-full p-4 left-0 top-0 absolute bg-white rounded-[10px] shadow-[6px_6px_25px_0px_rgba(0,0,0,0.20)] inline-flex flex-col justify-start items-start gap-2.5 overflow-hidden transform hover:scale-105 transition-transform duration-200 z-40">
           <div className="inline-flex justify-start items-center gap-[5px]">
             <div className="w-4 h-4 relative overflow-hidden">
               <Newspaper className="w-3.5 h-3.5 absolute left-[1.50px] top-[1.50px]" style={{ color: '#015FA9' }} />

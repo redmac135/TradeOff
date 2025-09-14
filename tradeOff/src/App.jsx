@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { GameContext } from './context/GameContext';
 import { OnboardingProvider, useOnboarding } from './context/OnboardingContext';
 import { useGameData } from './hooks/useGameData'; // Import the live data hook
@@ -82,21 +82,25 @@ function GameApp() {
   }, [liveNewsItems]);
 
   // Handle page visibility changes
+  // Track page visibility with stable handlers so listeners can be removed cleanly
   useEffect(() => {
     const handleVisibilityChange = () => {
       const isVisible = !document.hidden;
       setIsPageVisible(isVisible);
-      console.log('Page visibility changed:', isVisible ? 'visible' : 'hidden');
+      // console.debug('Page visibility changed:', isVisible ? 'visible' : 'hidden');
     };
 
+    const handleWindowFocus = () => setIsPageVisible(true);
+    const handleWindowBlur = () => setIsPageVisible(false);
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', () => setIsPageVisible(true));
-    window.addEventListener('blur', () => setIsPageVisible(false));
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('blur', handleWindowBlur);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', () => setIsPageVisible(true));
-      window.removeEventListener('blur', () => setIsPageVisible(false));
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('blur', handleWindowBlur);
     };
   }, []);
 
@@ -254,7 +258,15 @@ function GameApp() {
   // (Mock data generation code removed since useMockData = false)
 
   // Game timer countdown (pause when page is not visible or during onboarding)
+  // Timer effect: create interval only when allowed (not paused) and use a ref
+  const intervalRef = useRef(null);
   useEffect(() => {
+    // Clear any existing interval first
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     // Do not start the timer at all until the initial onboarding prompt is dismissed
     // and any tutorial is finished (user either completed onboarding or skipped it).
     if (gameTimer <= 0) return;
@@ -263,24 +275,33 @@ function GameApp() {
       return;
     }
 
-    const timer = setInterval(() => {
-      // Only countdown when page is visible
-      if (!isPageVisible) {
-        console.log('Timer paused - page not visible');
-        return;
-      }
+    // Only countdown when page is visible
+    if (!isPageVisible) {
+      // paused due to page not visible
+      return;
+    }
 
+    intervalRef.current = setInterval(() => {
       setGameTimer(prevTimer => {
         if (prevTimer <= 1) {
-          // Game over logic can be added here
+          // stop interval when timer hits zero
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
           return 0;
         }
         return prevTimer - 1;
       });
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [gameTimer, isPageVisible, isOnboardingActive, showInitialPrompt]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isPageVisible, isOnboardingActive, showInitialPrompt, gameTimer]);
   // Trigger endgame overlay when timer hits 0
   useEffect(() => {
     if (gameTimer === 0) {
