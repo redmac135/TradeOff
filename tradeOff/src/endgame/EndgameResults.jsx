@@ -6,18 +6,28 @@ import RbcWhite from '../assets/RBC White.svg';
 const EndgameResults = () => {
   const { totalPnL } = useGameContext();
 
-  const { isLoss, label, amountAbs } = useMemo(() => {
+  const { isLoss, label, amountAbs, finalInvestEaseAmount } = useMemo(() => {
     const isLossVal = (Number(totalPnL) || 0) < 0;
     const amt = Number(totalPnL) || 0;
+
+    // Calculate final InvestEase amount (110% of initial)
+    const level = localStorage.getItem('selectedLevel');
+    let initialAmount;
+    switch(level) {
+      case 'easy': initialAmount = 1000; break;
+      case 'medium': initialAmount = 5000; break;
+      case 'hard': initialAmount = 15000; break;
+      default: initialAmount = 1000;
+    }
+    const finalAmount = initialAmount * 0.1; // 110% of initial amount
+
     return {
       isLoss: isLossVal,
       label: isLossVal ? 'loss' : 'profit',
       amountAbs: Math.abs(amt),
+      finalInvestEaseAmount: finalAmount
     };
   }, [totalPnL]);
-
-  // Placeholder for InvestEase number until API integration
-  const investEaseAmount = null; // TODO: Replace with API result when available
 
   return (
     <div className= "min-h-screen w-full flex flex-col lg:flex-row" style={{ backgroundColor: '#015FA9' }}>
@@ -46,8 +56,8 @@ const EndgameResults = () => {
             <div className="text-white text-lg sm:text-xl font-light font-['Roboto_Flex']">
               InvestEase portfolio earned...
             </div>
-            <div className="text-white text-3xl sm:text-5xl font-bold font-['Lato']">
-              {investEaseAmount == null ? 'Coming soon' : investEaseAmount.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+            <div className="text-white text-3xl sm:text-5xl font-bold font-['Lato'] text-green-200">
+              {finalInvestEaseAmount.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
         </div>
