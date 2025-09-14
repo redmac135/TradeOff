@@ -358,8 +358,9 @@ function GameApp() {
     userGoal,
     currentMarketPrice,
     totalEquity,
-  totalPnL,
-  realizedPnL,
+    totalPnL,
+    realizedPnL,
+    investEaseAmount,
     
     // Actions
     handleTrade,
@@ -478,6 +479,14 @@ const AppContent = () => {
               </div>
               <div data-tour="pnl">
                 <Card title="Your Total P&L" value={displayData.totalPnL} type="cash" />
+              </div>
+              <div>
+                <Card 
+                  title="InvestEase Portfolio" 
+                  value={isDemoMode ? demoCash : gameContext.investEaseAmount} 
+                  type="cash"
+                  style={{ backgroundColor: '#005DAA', color: 'white' }}
+                />
               </div>
             </div>
           </div>

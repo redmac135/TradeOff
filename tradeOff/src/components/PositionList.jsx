@@ -3,12 +3,25 @@ import { useGameContext } from '../context/GameContext';
 import { useOnboarding } from '../context/OnboardingContext';
 
 const PositionList = ({ demoData }) => {
-  const { positions, currentMarketPrice, calculatePositionPnL } = useGameContext();
+  const { positions, currentMarketPrice, calculatePositionPnL, investEaseAmount } = useGameContext();
   const { isDemoMode, getCurrentDemoPrice } = useOnboarding();
   
   // Use demo data if provided, otherwise use real positions
   const displayPositions = demoData || positions;
   const displayPrice = isDemoMode ? getCurrentDemoPrice() : currentMarketPrice;
+  
+  // Calculate InvestEase profit (current amount - level amount)
+  const getInitialAmount = () => {
+    const level = localStorage.getItem('selectedLevel');
+    switch(level) {
+      case 'easy': return 1000;
+      case 'medium': return 5000;
+      case 'hard': return 15000;
+      default: return 1000; // Default to easy level amount
+    }
+  };
+  const initialAmount = getInitialAmount();
+  const investEaseProfit = investEaseAmount - initialAmount;
   
   // Simple P&L calculation for demo mode
   const calculateDemoPnL = (position, currentPrice) => {
@@ -29,7 +42,7 @@ const PositionList = ({ demoData }) => {
         <div className="text-center">
           <div className="text-sm text-gray-600 mb-1">Amount made by RBC InvestEase</div>
           <div className="text-lg font-bold text-gray-600">
-            $0.00
+            {investEaseProfit.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
       </div>
