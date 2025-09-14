@@ -72,8 +72,7 @@ function GameApp() {
   const [realizedPnL, setRealizedPnL] = useState(0); // Track realized P&L from closed positions
 
   // Always use mock data for now (can be changed internally later)
-  const useMockData = true;
-  const apiData = [];
+  const useMockData = false;
 
   // Handle page visibility changes
   useEffect(() => {

@@ -56,26 +56,19 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   const dataSource = useMemo(() => {
     const data = useMockData ? candles : (useMockData ? marketData : apiData);
     if (!Array.isArray(data)) return [];
-    
+
+
     // Validate and clean data, and convert to sequential index instead of time-based
-    const validData = data.filter(item => 
-      item && 
-      typeof item.x === 'number' && 
-      typeof item.o === 'number' && 
-      typeof item.h === 'number' && 
-      typeof item.l === 'number' && 
-      typeof item.c === 'number' &&
-      !isNaN(item.x) && !isNaN(item.o) && !isNaN(item.h) && !isNaN(item.l) && !isNaN(item.c) &&
-      item.h >= item.l && // High should be >= Low
-      item.h >= Math.max(item.o, item.c) && // High should be >= Open and Close
-      item.l <= Math.min(item.o, item.c) // Low should be <= Open and Close
-    ).slice(-30); // Keep only last 30 for performance
+    const mapped = data.slice(-30).map((item, index) => ({
+      x: index,
+      h: item.h ?? item.High,
+      l: item.l ?? item.Low,
+      o: item.o ?? item.Open,
+      c: item.c ?? item.Close,
+    }));
 
     // Convert to sequential indexing to avoid gaps
-    return validData.map((item, index) => ({
-      ...item,
-      x: index // Use sequential index instead of timestamp
-    }));
+    return mapped;
   }, [useMockData, marketData, apiData, demoData, candles]);
 
   // Handle page visibility changes (when user switches tabs)
@@ -83,7 +76,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
     const handleVisibilityChange = () => {
       const isPageVisible = !document.hidden;
       setIsVisible(isPageVisible);
-      
+
       if (isPageVisible) {
         console.log('Page became visible, refreshing chart...');
         // Small delay to ensure the page is fully active
@@ -117,7 +110,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         setChartError(null);
         setChartKey(prev => prev + 1);
         setLastResetTime(Date.now());
-        
+
         // Clean up old chart instance
         if (chartRef.current) {
           try {
@@ -175,14 +168,14 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       // Get price ranges with safety checks
       const allHighs = dataSource.map(d => Number(d.h)).filter(h => !isNaN(h));
       const allLows = dataSource.map(d => Number(d.l)).filter(l => !isNaN(l));
-      
+
       if (allHighs.length === 0 || allLows.length === 0) {
         return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
       }
 
       const currentMin = Math.min(...allLows);
       const currentMax = Math.max(...allHighs);
-      
+
       // Ensure valid ranges
       if (currentMin >= currentMax || !isFinite(currentMin) || !isFinite(currentMax)) {
         return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
@@ -191,17 +184,17 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       // Calculate padding (5% on each side, minimum $50)
       const range = currentMax - currentMin;
       const padding = Math.max(range * 0.05, 50);
-      
+
       // Round to nice numbers for better visualization
       const yMin = Math.floor((currentMin - padding) / 10) * 10;
       const yMax = Math.ceil((currentMax + padding) / 10) * 10;
-      
+
       // X-axis: use sequential indexing (0 to length-1) with small buffer
       const xMin = -1;
       const xMax = Math.max(dataSource.length, 30);
 
       return { yMin, yMax, xMin, xMax };
-      
+
     } catch (error) {
       console.error('Error calculating axis ranges:', error);
       return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
@@ -234,7 +227,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       positions.forEach((position) => {
         const profitLoss = calculatePositionPnL(position, currentMarketPrice);
         const isProfit = profitLoss >= 0;
-        
+
         // Determine color based on position type and current profit/loss
         let lineColor;
         if (position.type === 'long') {
@@ -246,7 +239,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         // Create horizontal line data across the entire chart width
         const xMin = dataSource.length > 0 ? Math.min(...dataSource.map(d => d.x)) : 0;
         const xMax = dataSource.length > 0 ? Math.max(...dataSource.map(d => d.x)) : 30;
-        
+
         datasets.push({
           label: `${position.type.toUpperCase()} Entry - $${position.entryPrice.toFixed(2)}`,
           type: 'line',
@@ -287,7 +280,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
     spanGaps: false,
     devicePixelRatio: window.devicePixelRatio || 1,
     plugins: {
-      legend: { 
+      legend: {
         display: positions.length > 0,
         position: 'top',
         labels: {
@@ -303,12 +296,12 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
           generateLabels: (chart) => {
             const original = ChartJS.defaults.plugins.legend.labels.generateLabels;
             const labels = original.call(this, chart);
-            
+
             return labels.map(label => {
               if (label.text && label.text.includes('Entry')) {
                 // Customize position line labels
-                const position = positions.find(p => 
-                  label.text.includes(p.type.toUpperCase()) && 
+                const position = positions.find(p =>
+                  label.text.includes(p.type.toUpperCase()) &&
                   label.text.includes(p.entryPrice.toFixed(2))
                 );
                 if (position) {
@@ -338,12 +331,12 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
             try {
               if (!context || !context[0]) return 'No data';
               const dataset = context[0].dataset;
-              
+
               // Check if this is a position line
               if (dataset.label && dataset.label.includes('Entry')) {
                 return dataset.label;
               }
-              
+
               // Regular OHLC data
               if (!context[0].raw) return 'No data';
               const dataPoint = context[0].raw;
@@ -355,7 +348,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
           label: (context) => {
             try {
               const dataset = context.dataset;
-              
+
               // Check if this is a position line
               if (dataset.label && dataset.label.includes('Entry')) {
                 const price = context.parsed.y;
@@ -372,7 +365,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
                 }
                 return `Entry Price: $${price.toFixed(2)}`;
               }
-              
+
               // Regular OHLC data
               if (!context || !context.raw) return 'No data';
               const dataPoint = context.raw;
@@ -399,13 +392,13 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
           font: { size: 12, family: 'Roboto' },
           maxTicksLimit: 10,
           autoSkip: true,
-          callback: function(value) {
+          callback: function (value) {
             // Show cleaner tick labels (every few points)
             return Math.floor(value) % 5 === 0 ? `${Math.floor(value)}` : '';
           }
         },
-        grid: { 
-          color: '#e5e7eb', 
+        grid: {
+          color: '#e5e7eb',
           lineWidth: 1,
           display: true,
         },
@@ -434,8 +427,8 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
           maxTicksLimit: 8,
           precision: 0,
         },
-        grid: { 
-          color: '#e5e7eb', 
+        grid: {
+          color: '#e5e7eb',
           lineWidth: 1,
           display: true,
         },
@@ -464,7 +457,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         return (
           <div className="flex flex-col items-center justify-center h-full text-red-500 space-y-2">
             <div>Chart Error: {chartError}</div>
-            <button 
+            <button
               onClick={() => {
                 setChartError(null);
                 setChartKey(prev => prev + 1);
@@ -495,16 +488,16 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       }
 
       return (
-        <Chart 
+        <Chart
           key={`${chartKey}-${forceRerender}`}
-          ref={chartRef} 
-          type="candlestick" 
-          data={chartData} 
+          ref={chartRef}
+          type="candlestick"
+          data={chartData}
           options={options}
           fallbackContent={
             <div className="flex flex-col items-center justify-center h-full text-red-500 space-y-2">
               <div>Chart failed to load</div>
-              <button 
+              <button
                 onClick={() => {
                   setChartError(null);
                   setChartKey(prev => prev + 1);
@@ -523,7 +516,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       return (
         <div className="flex flex-col items-center justify-center h-full text-red-500 space-y-2">
           <div>Chart rendering failed</div>
-          <button 
+          <button
             onClick={() => {
               setChartError(null);
               setChartKey(prev => prev + 1);
