@@ -14,6 +14,7 @@ import { OnboardingContainer } from './onboarding';
 import EndgameOverlay from './endgame/EndgameOverlay';
 import EndgameResults from './endgame/EndgameResults';
 import './App.css';
+import { stopGame } from './aws/gameApi';
 
 function GameApp() {
   // Get onboarding state to pause timer during onboarding
@@ -306,6 +307,7 @@ function GameApp() {
   useEffect(() => {
     if (gameTimer === 0) {
       setShowEndgame(true);
+      stopGame();
     }
   }, [gameTimer]);
 
