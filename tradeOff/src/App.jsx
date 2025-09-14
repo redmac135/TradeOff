@@ -1,33 +1,58 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { GameContext } from './context/GameContext';
 import { OnboardingProvider, useOnboarding } from './context/OnboardingContext';
 import { useGameData } from './hooks/useGameData'; // Import the live data hook
+import { TrainingLanding } from './training';
 import Navbar from './components/Navbar';
 import FinancialChart from './components/FinancialChart';
 import MarketNews from './components/MarketNews';
 import Card from './components/Card';
 import PositionControl from './components/PositionControl';
 import PositionList from './components/PositionList';
-import OnboardingPromptModal from './components/OnboardingPromptModal';
 import OnboardingTour from './components/OnboardingTour';
+import { OnboardingContainer } from './onboarding';
+import EndgameOverlay from './endgame/EndgameOverlay';
+import EndgameResults from './endgame/EndgameResults';
 import './App.css';
 
 function GameApp() {
   // Get onboarding state to pause timer during onboarding
-  const { isOnboardingActive } = useOnboarding();
+  const { isOnboardingActive, showInitialPrompt, isDemoMode } = useOnboarding();
+  
+  // Track initial onboarding completion
+  const [hasCompletedInitialOnboarding, setHasCompletedInitialOnboarding] = useState(false);
   
   // Connect to live data from DynamoDB
-  const { candles, news: liveNewsItems } = useGameData();
+  // Disable live polling until: tutorial is running (demo mode) or user skipped
+  const liveDataEnabled = !showInitialPrompt && !isDemoMode; // Only fetch live when landing is dismissed and not in demo
+  const { candles, news: liveNewsItems } = useGameData(liveDataEnabled);
   
   // Centralized State Management
-  const [cash, setCash] = useState(50000); // Starting cash
+  const [cash, setCash] = useState(() => {
+    const stored = Number(localStorage.getItem('startingCash'));
+    return Number.isFinite(stored) && stored > 0 ? stored : 50000;
+  }); // Starting cash from onboarding
   const [positions, setPositions] = useState([]); // Array of open trades
   const [marketData, setMarketData] = useState([]); // Chart data
   const [newsItems, setNewsItems] = useState([]); // News headlines
-  const [gameTimer, setGameTimer] = useState(180); // 180 seconds countdown
+  const [gameTimer, setGameTimer] = useState(180); // 180 seconds = 3 minutes countdown
   const [userGoal, setUserGoal] = useState({ name: 'First Car', amount: 15000 }); // User goal
   const [isPageVisible, setIsPageVisible] = useState(true); // Track page visibility
   const [realizedPnL, setRealizedPnL] = useState(0); // Track realized P&L from closed positions
+  const [showEndgame, setShowEndgame] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  
+  // Track InvestEase amount that grows over time
+  const [investEaseAmount, setInvestEaseAmount] = useState(() => {
+    const startingCash = Number(localStorage.getItem('startingCash')) || 50000;
+    return startingCash; // Start with initial amount
+  });
+  
+  // Risk tolerance (0-100) - initialized from localStorage if available
+  const [riskTolerance, setRiskTolerance] = useState(() => {
+    const stored = localStorage.getItem('riskTolerance');
+    return stored ? Number(stored) : 50;
+  });
 
   // Sync live data from DynamoDB to local state for trading
   useEffect(() => {
@@ -64,21 +89,25 @@ function GameApp() {
   }, [liveNewsItems]);
 
   // Handle page visibility changes
+  // Track page visibility with stable handlers so listeners can be removed cleanly
   useEffect(() => {
     const handleVisibilityChange = () => {
       const isVisible = !document.hidden;
       setIsPageVisible(isVisible);
-      console.log('Page visibility changed:', isVisible ? 'visible' : 'hidden');
+      // console.debug('Page visibility changed:', isVisible ? 'visible' : 'hidden');
     };
 
+    const handleWindowFocus = () => setIsPageVisible(true);
+    const handleWindowBlur = () => setIsPageVisible(false);
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', () => setIsPageVisible(true));
-    window.addEventListener('blur', () => setIsPageVisible(false));
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('blur', handleWindowBlur);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', () => setIsPageVisible(true));
-      window.removeEventListener('blur', () => setIsPageVisible(false));
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('blur', handleWindowBlur);
     };
   }, []);
 
@@ -232,32 +261,91 @@ function GameApp() {
     return { totalReturn, totalProfitLoss };
   };
 
-
   // Remove mock data generation - using live data from DynamoDB now
   // (Mock data generation code removed since useMockData = false)
 
   // Game timer countdown (pause when page is not visible or during onboarding)
+  // Timer effect: create interval only when allowed (not paused) and use a ref
+  const intervalRef = useRef(null);
   useEffect(() => {
+    // Clear any existing interval first
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    // Do not start the timer at all until the initial onboarding prompt is dismissed
+    // and any tutorial is finished (user either completed onboarding or skipped it).
     if (gameTimer <= 0) return;
+    if (showInitialPrompt || isOnboardingActive) {
+      // No interval created while onboarding prompt is visible or tutorial active
+      return;
+    }
 
-    const timer = setInterval(() => {
-      // Only countdown when page is visible and not in onboarding
-      if (!isPageVisible || isOnboardingActive) {
-        console.log('Timer paused - page not visible or onboarding active');
-        return;
-      }
+    // Only countdown when page is visible
+    if (!isPageVisible) {
+      // paused due to page not visible
+      return;
+    }
 
+    intervalRef.current = setInterval(() => {
       setGameTimer(prevTimer => {
         if (prevTimer <= 1) {
-          // Game over logic can be added here
+          // stop interval when timer hits zero
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
           return 0;
         }
         return prevTimer - 1;
       });
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [gameTimer, isPageVisible, isOnboardingActive]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isPageVisible, isOnboardingActive, showInitialPrompt, gameTimer]);
+  // Trigger endgame overlay when timer hits 0
+  useEffect(() => {
+    if (gameTimer === 0) {
+      setShowEndgame(true);
+    }
+  }, [gameTimer]);
+
+  // When the endgame overlay is shown, automatically switch to results after 5 seconds
+  useEffect(() => {
+    if (!showEndgame) return;
+    const t = setTimeout(() => {
+      setShowEndgame(false);
+      setShowResults(true);
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [showEndgame]);
+
+  // When tutorial (onboarding tour) ends, reset timer back to 3 minutes
+  useEffect(() => {
+    if (!isOnboardingActive) {
+      setGameTimer(180);
+      // Reset InvestEase amount when game starts
+      const startingCash = Number(localStorage.getItem('startingCash')) || 50000;
+      setInvestEaseAmount(startingCash);
+    }
+  }, [isOnboardingActive]);
+
+  // Update InvestEase amount gradually as time passes
+  useEffect(() => {
+    if (gameTimer <= 180 && gameTimer >= 0) {
+      const startingCash = Number(localStorage.getItem('startingCash')) || 50000;
+      const maxGrowth = startingCash * 0.1; // 10% growth target
+      const timeProgress = (180 - gameTimer) / 180; // Progress from 0 to 1
+      const currentGrowth = maxGrowth * timeProgress;
+      setInvestEaseAmount(startingCash + currentGrowth);
+    }
+  }, [gameTimer]);
 
   // Simulate occasional news updates
   useEffect(() => {
@@ -289,8 +377,9 @@ function GameApp() {
     userGoal,
     currentMarketPrice,
     totalEquity,
-  totalPnL,
-  realizedPnL,
+    totalPnL,
+    realizedPnL,
+    investEaseAmount,
     
     // Actions
     handleTrade,
@@ -305,11 +394,50 @@ function GameApp() {
     setNewsItems,
     setGameTimer,
     setUserGoal
+  ,
+  // Risk tolerance accessors
+  riskTolerance,
+  setRiskTolerance
   };
+
+  const handleCompleteOnboarding = (onboardRiskTolerance) => {
+    // Apply the onboarding-selected starting cash to the live game
+    const stored = Number(localStorage.getItem('startingCash'));
+    if (Number.isFinite(stored) && stored > 0) {
+      setCash(stored);
+    }
+
+    // If onboarding passed a risk tolerance, use it and persist it
+    if (typeof onboardRiskTolerance === 'number') {
+      setRiskTolerance(onboardRiskTolerance);
+      try {
+        localStorage.setItem('riskTolerance', String(onboardRiskTolerance));
+      } catch {
+        // ignore storage errors
+      }
+    } else {
+      // Otherwise fallback to any stored value
+      const storedRisk = localStorage.getItem('riskTolerance');
+      if (storedRisk) {
+        setRiskTolerance(Number(storedRisk));
+      }
+    }
+
+    setHasCompletedInitialOnboarding(true);
+  };
+
+  // If initial onboarding is not completed, show onboarding screen
+  if (!hasCompletedInitialOnboarding) {
+    return <OnboardingContainer onComplete={handleCompleteOnboarding} />;
+  }
 
   return (
     <GameContext.Provider value={gameContextValue}>
-      <AppContent />
+      {/* Landing overlay that blocks interaction and live data until dismissed */}
+      {!showResults && <TrainingLanding />}
+      {!showResults && <AppContent />}
+  {showEndgame && <EndgameOverlay />}
+      {showResults && <EndgameResults />}
     </GameContext.Provider>
   );
 }
@@ -331,7 +459,6 @@ const AppContent = () => {
 
   return (
     <>
-      <OnboardingPromptModal />
       <OnboardingTour />
       <div className="h-screen bg-gray-100 flex flex-col overflow-hidden" data-tour="welcome">
         <Navbar 
@@ -344,8 +471,8 @@ const AppContent = () => {
         
         <main className="flex-1 px-4 py-6 overflow-hidden min-h-0">
           <div className="h-full flex flex-col lg:flex-row gap-6 min-h-0">
-            {/* Main Chart Area */}
-            <div className="hidden md:flex flex-1 flex-col gap-4 overflow-hidden min-h-0">
+            {/* Main Chart Area - Show during demo mode even on mobile */}
+            <div className={`${isDemoMode ? 'flex' : 'hidden md:flex'} flex-1 flex-col gap-4 overflow-hidden min-h-0`}>
               <div className="flex-1 overflow-hidden min-h-0" data-tour="chart">
                 <FinancialChart 
                   useMockData={true} 
@@ -353,14 +480,14 @@ const AppContent = () => {
                   demoData={isDemoMode ? demoMarketData : undefined}
                 />
               </div>
-              <div className="hidden md:block flex-shrink-0 h-24" data-tour="demo-trade">
+              <div className={`${isDemoMode ? 'block' : 'hidden md:block'} flex-shrink-0 h-24`} data-tour="demo-trade">
                 <PositionControl />
               </div>
             </div>
 
-            {/* Sidebar */}
-            <div className="hidden lg:flex w-full lg:w-96 flex-col gap-4 overflow-hidden">
-              <div className="hidden md:block flex-1 overflow-hidden" data-tour="news-feed">
+            {/* Sidebar - Show during demo mode even on mobile */}
+            <div className={`${isDemoMode ? 'flex' : 'hidden lg:flex'} w-full lg:w-96 flex-col gap-4 overflow-hidden`}>
+              <div className={`${isDemoMode ? 'block' : 'hidden md:block'} flex-1 overflow-hidden`} data-tour="news-feed">
                 <MarketNews demoData={isDemoMode ? demoNewsItems : undefined} />
               </div>
               <div data-tour="positions">
@@ -371,6 +498,14 @@ const AppContent = () => {
               </div>
               <div data-tour="pnl">
                 <Card title="Your Total P&L" value={displayData.totalPnL} type="cash" />
+              </div>
+              <div>
+                <Card 
+                  title="InvestEase Portfolio" 
+                  value={isDemoMode ? demoCash : gameContext.investEaseAmount} 
+                  type="cash"
+                  style={{ backgroundColor: '#005DAA', color: 'white' }}
+                />
               </div>
             </div>
           </div>

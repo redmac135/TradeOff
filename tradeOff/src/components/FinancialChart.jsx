@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { useGameContext } from '../context/GameContext';
+import { useOnboarding } from '../context/OnboardingContext';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -40,6 +41,7 @@ ChartJS.register(
 );
 
 const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
+  const { isDemoMode, showInitialPrompt } = useOnboarding();
   const { marketData, positions, currentMarketPrice, calculatePositionPnL } = useGameContext();
   const chartRef = useRef(null);
   const containerRef = useRef(null);
@@ -49,7 +51,8 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   const [chartError, setChartError] = useState(null);
   const [forceRerender, setForceRerender] = useState(0);
 
-  const { candles } = useGameData();
+  const liveEnabled = !isDemoMode && !showInitialPrompt; // Only poll when not demo and landing dismissed
+  const { candles } = useGameData(liveEnabled);
   // set data source based on mode
 
   // Add smooth transition states
@@ -420,6 +423,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
             // Ensure we don't pan beyond data bounds
             const xScale = chart.scales.x;
             const dataLength = throttledData.length;
+            
             if (xScale.min < -1) {
               xScale.options.min = -1;
               chart.update('none');
@@ -599,7 +603,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   }, [chartKey, forceRerender, chartData, options, throttledData, isVisible, chartError]);
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-gray-50 rounded-[10px] shadow-lg flex flex-col overflow-hidden relative">
+    <div ref={containerRef} className="w-full h-full bg-gray-50 rounded-[10px] shadow-lg flex flex-col overflow-hidden relative" data-tour="chart-canvas">
       
       {/* Scroll hint for mobile */}
       {isMobile && throttledData.length > visiblePoints && (
@@ -612,7 +616,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       
       {/* Chart Container - Adaptive height that fills available space */}
       <div className={`relative flex-1 w-full p-2 md:p-4 min-h-0 ${isMobile ? 'overflow-x-auto overflow-y-hidden' : ''}`}>
-        <div className={isMobile ? 'w-[200%] h-full' : 'w-full h-full'}>
+  <div className={isMobile ? 'w-[200%] h-full' : 'w-full h-full'}>
           {renderChart()}
         </div>
       </div>

@@ -1,13 +1,23 @@
 import React, { useMemo } from 'react';
 import { Newspaper } from 'lucide-react';
+import { useOnboarding } from '../context/OnboardingContext';
 import { useGameData } from '../hooks/useGameData';
 
 const MarketNews = ({ demoData }) => {
-  const { news } = useGameData();
+  const { isDemoMode, showInitialPrompt } = useOnboarding();
+  const liveEnabled = !isDemoMode && !showInitialPrompt;
+  const { news } = useGameData(liveEnabled);
 
   const displayNewsItems = useMemo(() => {
-    return [...news];
-  }, [news]);
+    // Prefer provided demo data during onboarding, otherwise live news
+    const source = (isDemoMode && Array.isArray(demoData)) ? demoData : news;
+    const normalize = (item) => ({
+      title: item?.title ?? item?.Headline ?? '',
+      description: item?.description ?? item?.Summary ?? '',
+      priority: item?.priority ?? item?.Priority ?? 'medium',
+    });
+    return Array.isArray(source) ? source.map(normalize) : [];
+  }, [news, isDemoMode, demoData]);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -20,8 +30,8 @@ const MarketNews = ({ demoData }) => {
 
   return (
     <>
-      {/* Desktop Layout */}
-      <div className="hidden md:flex w-full h-full p-6 relative bg-gray-50 rounded-[10px] shadow-[4px_4px_20px_0px_rgba(0,0,0,0.05)] flex-col gap-2.5 overflow-hidden">
+  {/* Desktop Layout */}
+  <div className="hidden md:flex w-full h-full p-6 relative bg-gray-50 rounded-[10px] shadow-[4px_4px_20px_0px_rgba(0,0,0,0.05)] flex-col gap-2.5 overflow-hidden" data-tour="news-feed news-primary">
         <div className="text-blue-600 text-4xl font-normal font-['Lato'] flex-shrink-0 flex items-center gap-3">
           <Newspaper className="text-blue-600" size={36} />
           <span>News Feed</span>
@@ -33,11 +43,11 @@ const MarketNews = ({ demoData }) => {
             <div key={index} className="w-full flex flex-col justify-start items-start gap-2">
               <div className="w-full flex justify-start items-start gap-3">
                 <div className={`text-lg font-medium font-['Roboto_Flex'] ${getPriorityColor(item.priority)}`}>
-                  {item.Headline}
+                  {item.title}
                 </div>
               </div>
               <div className={`w-full text-sm font-normal font-['Roboto_Flex'] ${getPriorityColor(item.priority)}`}>
-                {item.Summary}
+                {item.description}
               </div>
             </div>
           ))}
@@ -47,15 +57,15 @@ const MarketNews = ({ demoData }) => {
         <div className="absolute bottom-0 left-0 w-full h-28 bg-gradient-to-t from-gray-50 to-transparent pointer-events-none"></div>
       </div>
 
-      {/* Mobile Layout */}
-      <div className="md:hidden w-96 h-40 relative">
+  {/* Mobile Layout */}
+  <div className="md:hidden w-full max-w-sm h-40 relative mx-auto" data-tour="news-feed news-primary">
         {/* Background cards for stacked effect - positioned to look like cards underneath */}
-        <div className="w-96 h-28 p-4 left-[12px] top-[28px] absolute bg-gray-100 rounded-lg shadow-[2px_2px_12px_0px_rgba(0,0,0,0.08)] transform rotate-[1deg]" />
-        <div className="w-96 h-28 p-4 left-[8px] top-[22px] absolute bg-gray-200 rounded-lg shadow-[3px_3px_15px_0px_rgba(0,0,0,0.12)] transform rotate-[-0.5deg]" />
-        <div className="w-96 h-28 p-4 left-[4px] top-[16px] absolute bg-gray-300 rounded-lg shadow-[4px_4px_18px_0px_rgba(0,0,0,0.15)] transform rotate-[0.8deg]" />
+        <div className="w-full h-28 p-4 left-3 top-7 absolute bg-gray-100 rounded-lg shadow-[2px_2px_12px_0px_rgba(0,0,0,0.08)] transform rotate-[1deg] z-10" />
+        <div className="w-full h-28 p-4 left-2 top-5 absolute bg-gray-200 rounded-lg shadow-[3px_3px_15px_0px_rgba(0,0,0,0.12)] transform -rotate-1 z-20" />
+        <div className="w-full h-28 p-4 left-1 top-4 absolute bg-gray-300 rounded-lg shadow-[4px_4px_18px_0px_rgba(0,0,0,0.15)] transform rotate-[0.8deg] z-30" />
         
         {/* Main card - top of the stack */}
-        <div className="w-96 p-4 left-0 top-0 absolute bg-white rounded-[10px] shadow-[6px_6px_25px_0px_rgba(0,0,0,0.20)] inline-flex flex-col justify-start items-start gap-2.5 overflow-hidden transform hover:scale-105 transition-transform duration-200">
+        <div className="w-full p-4 left-0 top-0 absolute bg-white rounded-[10px] shadow-[6px_6px_25px_0px_rgba(0,0,0,0.20)] inline-flex flex-col justify-start items-start gap-2.5 overflow-hidden transform hover:scale-105 transition-transform duration-200 z-40">
           <div className="inline-flex justify-start items-center gap-[5px]">
             <div className="w-4 h-4 relative overflow-hidden">
               <Newspaper className="w-3.5 h-3.5 absolute left-[1.50px] top-[1.50px]" style={{ color: '#015FA9' }} />

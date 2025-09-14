@@ -3,6 +3,7 @@ import { Chart as ChartJS, registerables } from 'chart.js';
 import { CandlestickController, CandlestickElement } from 'chartjs-chart-financial';
 import { Chart } from 'react-chartjs-2';
 import { useGameContext } from '../context/GameContext';
+import { useOnboarding } from '../context/OnboardingContext';
 import { useGameData } from '../hooks/useGameData';
 
 // Register Chart.js components
@@ -10,10 +11,12 @@ ChartJS.register(...registerables, CandlestickController, CandlestickElement);
 
 const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   const { marketData, positions, currentMarketPrice, calculatePositionPnL, totalPnL } = useGameContext();
+  const { isDemoMode, showInitialPrompt } = useOnboarding();
   const chartRef = useRef(null);
   
-  // Use the same live data source as the web version
-  const { candles } = useGameData();
+  // Use the same live data source as the web version, but gate until landing dismissed
+  const liveEnabled = !isDemoMode && !showInitialPrompt;
+  const { candles } = useGameData(liveEnabled);
 
   // Add state for smooth data transitions
   const [cachedData, setCachedData] = useState([]);
@@ -313,10 +316,10 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   }), [yAxisRange, isMobile, isUpdating]);
 
   return (
-    <div className={`relative w-full h-full min-h-[300px] transition-opacity duration-150 ${isUpdating ? 'opacity-95' : 'opacity-100'}`}>
+    <div className={`relative w-full h-full min-h-[300px] transition-opacity duration-150 ${isUpdating ? 'opacity-95' : 'opacity-100'}`} data-tour="chart-canvas">
       {/* P&L Display - Only show on mobile, positioned above chart */}
       {isMobile && (
-        <div className={`absolute -top-12 left-0 z-10 px-2 py-1 ${pnlDisplay.bgColor} rounded-[10px] inline-flex justify-start items-center gap-1`}>
+  <div className={`absolute top-2 md:-top-10 left-0 z-10 px-2 py-1 ${pnlDisplay.bgColor} rounded-[10px] inline-flex justify-start items-center gap-1`} data-tour="pnl-mobile">
           <div className={`justify-start ${pnlDisplay.textColor} text-lg font-normal font-['Lato']`}>P&L</div>
           <div className="flex justify-start items-center">
             <div className="size-6 relative overflow-hidden flex items-center justify-center">

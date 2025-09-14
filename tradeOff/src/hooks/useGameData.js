@@ -4,17 +4,25 @@ import { ddb } from "../aws/dynamoClient";
 
 const TABLE_NAME = "TradeOffData";
 
-export function useGameData() {
+// Optional flag `enabled` to control when polling begins
+export function useGameData(enabled = true) {
   const [candles, setCandles] = useState([]);
   const [news, setNews] = useState([]);
 
   useEffect(() => {
     let interval;
 
+    if (!enabled) {
+      // When disabled, clear any data to ensure UI shows demo/placeholder
+      setCandles([]);
+      setNews([]);
+      return; // Don't start polling
+    }
+
     async function fetchUpdates() {
       try {
         console.log('Fetching updates from DynamoDB...');
-
+        
         // Fetch latest candles
         const candleRes = await ddb.send(
           new QueryCommand({
@@ -22,7 +30,7 @@ export function useGameData() {
             KeyConditionExpression: "EntityType = :etype",
             ExpressionAttributeValues: { ":etype": "OHLCV" },
             ScanIndexForward: false, // newest first
-            Limit: 50,
+            Limit: 20,
           })
         );
 
@@ -54,7 +62,7 @@ export function useGameData() {
     interval = setInterval(fetchUpdates, 333);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [enabled]);
 
   return { candles, news };
 }

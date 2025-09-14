@@ -8,10 +8,10 @@ const PositionControl = () => {
   const { isDemoMode, demoCash, demoPositions, showInitialPrompt } = useOnboarding();
   
   const [sliderValue, setSliderValue] = useState(50); // 0-100 range
-  const [isSliderActive, setIsSliderActive] = useState(false); // Track hover/active state
+  const [_isSliderActive, setIsSliderActive] = useState(false); // Track hover/active state
   const desktopSliderRef = useRef(null); // Reference to the desktop slider container
   const mobileSliderRef = useRef(null); // Reference to the mobile slider container
-  const [isDragging, setIsDragging] = useState(false); // Track drag state
+  const [_isDragging, setIsDragging] = useState(false); // Track drag state
   
   // Track if component is mounted to prevent state updates after unmount
   const isMountedRef = useRef(true);
@@ -64,71 +64,8 @@ const PositionControl = () => {
   };
 
   // ========================================
-  // BRAND NEW SLIDER IMPLEMENTATION
+  // Slider handlers implemented separately for desktop and mobile below
   // ========================================
-  
-  const handleSliderClick = (event) => {
-    console.log('� NEW SLIDER CLICK - Event received!', event.type);
-    
-    if (hasOpenPositions) {
-      console.log('� NEW SLIDER CLICK - Blocked by positions');
-      return;
-    }
-    
-    if (!sliderRef.current) {
-      console.log('� NEW SLIDER CLICK - No slider ref');
-      return;
-    }
-    
-    const rect = sliderRef.current.getBoundingClientRect();
-    console.log('� NEW SLIDER CLICK - Rect:', rect);
-    
-    const x = event.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    const newValue = Math.round(percentage);
-    
-    console.log('� NEW SLIDER CLICK - Setting value to:', newValue);
-    setSliderValue(newValue);
-  };
-  
-  const handleSliderMouseDown = (event) => {
-    console.log('� NEW SLIDER MOUSEDOWN - Event received!', event.type);
-    
-    if (hasOpenPositions) {
-      console.log('� NEW SLIDER MOUSEDOWN - Blocked by positions');
-      return;
-    }
-    
-    setIsDragging(true);
-    setIsSliderActive(true);
-    
-    // Handle initial click
-    handleSliderClick(event);
-    
-    const handleMouseMove = (moveEvent) => {
-      console.log('� NEW SLIDER MOVE - Moving');
-      if (!sliderRef.current) return;
-      
-      const rect = sliderRef.current.getBoundingClientRect();
-      const x = moveEvent.clientX - rect.left;
-      const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
-      const newValue = Math.round(percentage);
-      
-      console.log('� NEW SLIDER MOVE - Setting value to:', newValue);
-      setSliderValue(newValue);
-    };
-    
-    const handleMouseUp = () => {
-      console.log('� NEW SLIDER MOUSEUP - Ending drag');
-      setIsDragging(false);
-      setIsSliderActive(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
 
   // ========================================
   // NEW SEPARATE SLIDER IMPLEMENTATIONS
@@ -244,10 +181,10 @@ const PositionControl = () => {
     <>
       {/* Desktop Layout */}
       <div className="hidden md:flex w-full h-full shadow-[4px_4px_20px_0px_rgba(0,0,0,0.10)] justify-start items-center gap-4 bg-white rounded-[10px] p-3">
-        <div className="w-[360px] flex justify-start items-center gap-3 h-full" data-tour="trading-buttons">
+        <div className="w-[360px] flex justify-start items-center gap-3 h-full" data-tour="trading-buttons trading-buttons-primary">
           {hasOpenPositions ? (
             <button 
-              onClick={() => handlePositionChange('sell')}
+                onClick={() => handlePositionChange('sell')}
               className="flex-1 px-6 py-3 rounded-[10px] flex justify-center items-center transition-all duration-200 hover:scale-105 active:scale-95 bg-red-600 hover:bg-red-700"
             >
               <div className="text-white text-lg font-bold font-['Roboto_Flex']">
@@ -275,7 +212,7 @@ const PositionControl = () => {
             </>
           )}
         </div>
-        <div className="flex-1 relative flex justify-center items-center px-4" data-tour="slider">
+  <div className="flex-1 relative flex justify-center items-center px-4" data-tour="slider slider-primary">
           <div 
             ref={desktopSliderRef}
             className="flex-1 h-3 rounded-[20px] relative transition-all duration-150 ease-out cursor-pointer bg-gray-200"
@@ -316,7 +253,7 @@ const PositionControl = () => {
           
           {/* Cash Position and Total P&L Section - Top */}
           <div className="self-stretch inline-flex flex-col justify-start items-start gap-2">
-            <div className="self-stretch inline-flex justify-between items-center">
+            <div className="self-stretch inline-flex justify-between items-center" data-tour="cash">
               <div className="justify-start text-blue-600 text-lg font-normal font-['Lato']">Cash Position</div>
               <div className="justify-center text-gray-800 text-2xl font-bold font-['Lato']">${displayCash.toLocaleString()}</div>
             </div>
@@ -350,7 +287,7 @@ const PositionControl = () => {
         </div>
 
         {/* Slider Section - Middle */}
-        <div className="relative flex justify-center items-center px-4" data-tour="slider">
+  <div className="relative flex justify-center items-center px-4" data-tour="slider slider-primary">
           <div 
             ref={mobileSliderRef}
             className="w-full h-3 rounded-[20px] relative transition-all duration-150 ease-out cursor-pointer bg-gray-200"
@@ -372,7 +309,7 @@ const PositionControl = () => {
         </div>
 
         {/* Buttons Section - Bottom */}
-        <div className="flex justify-center items-center gap-3" data-tour="trading-buttons">
+  <div className="flex justify-center items-center gap-3" data-tour="trading-buttons trading-buttons-primary">
           {hasOpenPositions ? (
             <button 
               onClick={() => handlePositionChange('sell')}
