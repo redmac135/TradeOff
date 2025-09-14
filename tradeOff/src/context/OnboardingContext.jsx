@@ -1,6 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { startGame } from '../aws/gameApi';
 
 const OnboardingContext = createContext();
 
@@ -99,13 +98,11 @@ export const OnboardingProvider = ({ children }) => {
     setIsOnboardingActive(false);
     setIsDemoMode(false);
     setCurrentOnboardingStep(0);
-    startGame();
     // Removed localStorage setting - onboarding can be accessed every time
   }, []);
 
   const skipOnboarding = useCallback(() => {
     setShowInitialPrompt(false);
-    startGame();
     // Removed localStorage setting - onboarding can be accessed every time
   }, []);
 

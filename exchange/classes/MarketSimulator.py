@@ -2,12 +2,9 @@ import random
 import time
 import threading
 from .Settings import (
-    CANDLE_PERIOD,
-    NEWS_PERIOD,
-    INITIAL_SENTIMENT,
-    SENTIMENT_IMPACT,
-    GROWTH_RATE,
-    BASE_PRICE,
+    CANDLE_PERIOD, NEWS_PERIOD, INITIAL_SENTIMENT,
+    BOT_ORDER_SPREAD_PERCENT, SENTIMENT_IMPACT,
+    GROWTH_RATE, BASE_PRICE, SIMULATION_DURATION
 )
 from .OrderBook import OrderBook
 from .DBHandler import DBHandler
@@ -15,12 +12,7 @@ from .NewsGenerator import NewsGenerator
 
 
 class MarketSimulator:
-    def __init__(
-        self,
-        order_book: OrderBook,
-        news_generator: NewsGenerator,
-        db_handler: DBHandler,
-    ):
+    def __init__(self, order_book: OrderBook, news_generator: NewsGenerator, db_handler: DBHandler):
         self.base_price = BASE_PRICE
         self.growth_rate = GROWTH_RATE
         self.sentiment = INITIAL_SENTIMENT
@@ -28,6 +20,7 @@ class MarketSimulator:
         self.candle_period = CANDLE_PERIOD
         self.news_period = NEWS_PERIOD
         self.candle_count = 0
+        self.simulation_duration = SIMULATION_DURATION
 
         self.order_book = order_book
         self.news_generator = news_generator
@@ -35,15 +28,9 @@ class MarketSimulator:
 
         # Thread control / sync primitives
         self.running = False
-        self.state_lock = (
-            threading.Lock()
-        )  # protect reads/writes of shared state (candle_count, sentiment)
-        self.order_event = (
-            threading.Event()
-        )  # signalled by main clock when a new candle should be generated
-        self.news_event = (
-            threading.Event()
-        )  # signalled by main clock when news thread should check
+        self.state_lock = threading.Lock()     # protect reads/writes of shared state (candle_count, sentiment)
+        self.order_event = threading.Event()   # signalled by main clock when a new candle should be generated
+        self.news_event = threading.Event()    # signalled by main clock when news thread should check
 
         # ensure each worker only processes each candle once
         self._last_order_processed = 0
@@ -105,9 +92,7 @@ class MarketSimulator:
             for _ in range(num_orders):
                 side = "buy" if random.random() < buy_prob else "sell"
                 price_variation = last_price * random.uniform(-spread, spread)
-                price = max(
-                    0.01, last_price + price_variation
-                )  # never let price go <= 0
+                price = max(0.01, last_price + price_variation)  # never let price go <= 0
                 self.order_book.add_order(side, price)
 
             # Build candle and push to DB
@@ -121,6 +106,7 @@ class MarketSimulator:
 
             self._last_order_processed = candle_idx
             self.order_event.clear()
+
 
     def news_loop(self):
         """
@@ -157,17 +143,11 @@ class MarketSimulator:
 
                     # update sentiment atomically
                     with self.state_lock:
-                        self.sentiment += (
-                            getattr(news, "sentiment", 0.0) * SENTIMENT_IMPACT
-                        )
+                        self.sentiment += getattr(news, "sentiment", 0.0) * SENTIMENT_IMPACT
 
-                    print(
-                        f"[NewsThread] Candle {candle_idx}: News generated '{getattr(news,'headline',news)}' (sentiment {getattr(news,'sentiment',0.0)})"
-                    )
+                    print(f"[NewsThread] Candle {candle_idx}: News generated '{getattr(news,'headline',news)}' (sentiment {getattr(news,'sentiment',0.0)})")
                 except Exception as e:
-                    print(
-                        f"Warning: news generation failed at candle {candle_idx}: {e}"
-                    )
+                    print(f"Warning: news generation failed at candle {candle_idx}: {e}")
 
             self._last_news_processed = candle_idx
             self.news_event.clear()
@@ -177,6 +157,7 @@ class MarketSimulator:
         Main clock loop: increments candle_count, signals worker threads, then sleeps.
         The order thread generates and pushes candles (so the main loop doesn't block).
         """
+        max_candles = int(self.simulation_duration / self.candle_period)
         self.running = True
 
         order_thread = threading.Thread(target=self.order_loop, daemon=True)
@@ -187,7 +168,7 @@ class MarketSimulator:
         try:
             while True:
                 with self.state_lock:
-                    if not self.db_handler.get_is_ingame():
+                    if self.candle_count >= max_candles:
                         break
                     # increment the canonical candle index
                     self.candle_count += 1
@@ -213,5 +194,5 @@ class MarketSimulator:
             order_thread.join(timeout=2.0)
             news_thread.join(timeout=2.0)
 
-            self.db_handler.reset_tables()
+            # self.db_handler.reset_tables()
             print("Simulation complete.")
