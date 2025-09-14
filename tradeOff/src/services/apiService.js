@@ -1,65 +1,89 @@
 const API_BASE_URL = 'https://2dcq63co40.execute-api.us-east-1.amazonaws.com/dev';
 
-// Create a new client
-export async function createClient(jwtToken, clientName, initialCash) {
-  const url = `${API_BASE_URL}/clients`;
-  const headers = {
+// Get InvestUse Estimate
+export async function getInvestUseEstimate(clientName, initialCash, riskTolerance) {
+  const jwtToken = import.meta.env.VITE_JWT_SECRET;
+
+  // Step 1: create client and get id
+  const createClientUrl = `${API_BASE_URL}/clients`;
+  const createClientHeaders = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${jwtToken}`
   };
-  const body = JSON.stringify({
-    client_name: clientName,
-    initial_cash: initialCash
+  const createClientBody = JSON.stringify({
+    name: clientName,
+    email: `${clientName.replace(/\s+/g, '_').toLowerCase() + new Date().getTime()}@example.com`,
+    cash: initialCash,
+    portfolios: [],
   });
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: headers,
-      body: body
-    });
+  const createClientResponse = await fetch(createClientUrl, {
+    method: 'POST',
+    headers: createClientHeaders,
+    body: createClientBody,
+    mode: 'cors'
+  });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+  const jsonResponse = await createClientResponse.json()
+  const clientId = jsonResponse.id;
 
-    const data = await response.json();
-    return data.clientId;
-  } catch (error) {
-    console.error('Failed to create client:', error);
-    throw error;
-  }
-}
-
-// Simulate portfolio performance for a year
-export async function simulatePortfolio(jwtToken, clientId) {
-  const url = `${API_BASE_URL}/client/${clientId}/simulate`;
-  const headers = {
+  // Step 2: Create portfolio with initial cash
+  const createPortfolioUrl = `${API_BASE_URL}/clients/${clientId}/portfolios`;
+  const createPortfolioHeaders = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${jwtToken}`
   };
-  const body = JSON.stringify({
+
+  // split range 0 - 100% into 5 buckets
+  // 'aggressive_growth', 'growth', 'balanced', 'conservative', 'very_conservative'
+  let risk_tolerance = 'balanced';
+  if (riskTolerance <= 20) {
+    risk_tolerance = 'very_conservative';
+  } else if (riskTolerance <= 40) {
+    risk_tolerance = 'conservative';
+  } else if (riskTolerance <= 60) {
+    risk_tolerance = 'balanced';
+  } else if (riskTolerance <= 80) {
+    risk_tolerance = 'growth';
+  } else {
+    risk_tolerance = 'aggressive_growth';
+  }
+
+  const createPortfolioBody = JSON.stringify({
+    initialAmount: initialCash,
+    type: risk_tolerance
+  });
+
+  const createPortfolioResponse = await fetch(createPortfolioUrl, {
+    method: 'POST',
+    headers: createPortfolioHeaders,
+    body: createPortfolioBody,
+    mode: 'cors'
+  });
+
+  const portfolioId = (await createPortfolioResponse.json()).id;
+
+  // wait 1 second
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Step 3: Simulate portfolio for a year
+  const simulatePortfolioUrl = `${API_BASE_URL}/client/${clientId}/simulate`;
+  const simulatePortfolioHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${jwtToken}`
+  };
+  const simulatePortfolioBody = JSON.stringify({
     months: 12 // Simulate for a full year
   });
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: headers,
-      body: body
-    });
+  const simulatePortfolioResponse = await fetch(simulatePortfolioUrl, {
+    method: 'POST',
+    headers: simulatePortfolioHeaders,
+    body: simulatePortfolioBody,
+    mode: 'cors'
+  });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+  const projectedValue = (await simulatePortfolioResponse.json()).results[0].projectedValue;
 
-    const data = await response.json();
-    return {
-      message: data.message,
-      results: data.results
-    };
-  } catch (error) {
-    console.error('Simulation failed:', error);
-    throw error;
-  }
+  return projectedValue;
 }

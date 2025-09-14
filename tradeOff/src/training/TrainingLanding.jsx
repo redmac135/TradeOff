@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import RBCWhite from '../assets/RBC White.svg';
 import { useOnboarding } from '../context/OnboardingContext';
+import { useGameState } from '../hooks/useGameState';
 
 // Full-screen overlay shown on top of the dashboard until the user starts the tour or skips
 const TrainingLanding = () => {
   const { showInitialPrompt, startOnboarding, skipOnboarding } = useOnboarding();
+  const isRunning = useGameState();
+
+  useEffect(() => {
+    if (isRunning) {
+      skipOnboarding();
+    }
+  }, [isRunning, skipOnboarding]);
 
   if (!showInitialPrompt) return null;
 

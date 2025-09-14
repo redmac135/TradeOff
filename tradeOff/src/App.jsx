@@ -35,7 +35,7 @@ function GameApp() {
   const [positions, setPositions] = useState([]); // Array of open trades
   const [marketData, setMarketData] = useState([]); // Chart data
   const [newsItems, setNewsItems] = useState([]); // News headlines
-  const [gameTimer, setGameTimer] = useState(180); // 180 seconds = 3 minutes countdown
+  const [gameTimer, setGameTimer] = useState(60); // 60 seconds = 1 minute countdown
   const [userGoal, setUserGoal] = useState({ name: 'First Car', amount: 15000 }); // User goal
   const [isPageVisible, setIsPageVisible] = useState(true); // Track page visibility
   const [realizedPnL, setRealizedPnL] = useState(0); // Track realized P&L from closed positions
@@ -322,7 +322,7 @@ function GameApp() {
   // When tutorial (onboarding tour) ends, reset timer back to 3 minutes
   useEffect(() => {
     if (!isOnboardingActive) {
-  setGameTimer(180);
+  setGameTimer(60);
     }
   }, [isOnboardingActive]);
 
