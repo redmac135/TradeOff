@@ -38,7 +38,7 @@ ChartJS.register(
   OhlcElement
 );
 
-const FinancialChart = ({ useMockData = true, apiData = [] }) => {
+const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   const { marketData, positions, currentMarketPrice, calculatePositionPnL } = useGameContext();
   const chartRef = useRef(null);
   const containerRef = useRef(null);
@@ -50,7 +50,7 @@ const FinancialChart = ({ useMockData = true, apiData = [] }) => {
 
   // Use marketData from context, ensure it's always an array with valid data
   const dataSource = useMemo(() => {
-    const data = useMockData ? marketData : apiData;
+    const data = demoData || (useMockData ? marketData : apiData);
     if (!Array.isArray(data)) return [];
     
     // Validate and clean data, and convert to sequential index instead of time-based
@@ -72,7 +72,7 @@ const FinancialChart = ({ useMockData = true, apiData = [] }) => {
       ...item,
       x: index // Use sequential index instead of timestamp
     }));
-  }, [useMockData, marketData, apiData]);
+  }, [useMockData, marketData, apiData, demoData]);
 
   // Handle page visibility changes (when user switches tabs)
   useEffect(() => {

@@ -1,8 +1,11 @@
 import React from 'react';
 import { useGameContext } from '../context/GameContext';
 
-const MarketNews = () => {
+const MarketNews = ({ demoData }) => {
   const { newsItems } = useGameContext();
+  
+  // Use demo data if provided, otherwise use real news items
+  const displayNewsItems = demoData || newsItems;
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -19,7 +22,7 @@ const MarketNews = () => {
       <div className="w-full h-px bg-gray-300 flex-shrink-0"></div>
       
       <div className="w-full flex-1 flex flex-col gap-4 overflow-y-auto pr-2 min-h-0">
-        {newsItems.map((item, index) => (
+        {displayNewsItems.map((item, index) => (
           <div key={index} className="w-full flex flex-col justify-start items-start gap-2">
             <div className="w-full flex justify-start items-start gap-2">
               <div className={`text-lg font-medium font-['Roboto_Flex'] ${getPriorityColor(item.priority)}`}>
