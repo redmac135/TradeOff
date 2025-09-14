@@ -8,7 +8,7 @@ import logo from '../assets/RBC.svg';
 
 const Navbar = ({ demoData, demoMarketData }) => {
   const { gameTimer } = useGameContext();
-  const { triggerOnboarding } = useOnboarding();
+  const { triggerOnboarding, showInitialPrompt } = useOnboarding();
   
   // Format timer display
   const formatTime = (seconds) => {
@@ -63,9 +63,9 @@ const Navbar = ({ demoData, demoMarketData }) => {
           </div>
 
           {/* Mobile Layout - No Full Height, Natural Flow */}
-          <div className="md:hidden w-full">
+          <div className="md:hidden w-full flex flex-col h-screen">
             {/* Top Content Area */}
-            <div className="px-4 pt-8 flex flex-col items-center gap-4">
+            <div className="px-4 pt-8 flex flex-col items-center gap-4 flex-shrink-0">
               {/* Centered Logo and Title */}
               <div className="flex items-center gap-3">
                 <img src={logo} alt="TradeOff logo" className="w-10 h-10 object-contain flex-shrink-0" />
@@ -94,24 +94,26 @@ const Navbar = ({ demoData, demoMarketData }) => {
               <div className="w-full flex justify-center" data-tour="news-feed">
                 <MarketNews demoData={demoData} />
               </div>
+            </div>
 
-              {/* Financial Chart - Below news feed on mobile with space for P&L */}
-              <div className="w-full px-2 mt-6" data-tour="chart">
-                <FinancialChart 
-                  useMockData={true} 
-                  apiData={[]} 
-                  demoData={demoMarketData}
-                />
-              </div>
+            {/* Financial Chart - Flexible area that fills remaining space above bottom controls */}
+            <div className="flex-1 w-full px-2 pb-60 min-h-0" data-tour="chart">
+              <FinancialChart 
+                useMockData={true} 
+                apiData={[]} 
+                demoData={demoMarketData}
+              />
             </div>
           </div>
         </div>
       </header>
       
-      {/* Trading Controls - Fixed at Bottom of Viewport (Outside Header) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 w-full px-4 pb-8 pt-4 bg-white border-t border-gray-200" data-tour="demo-trade">
-        <PositionControl />
-      </div>
+      {/* Trading Controls - Fixed at Bottom of Viewport (Outside Header) - Only show when not in initial prompt */}
+      {!showInitialPrompt && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 w-full px-4 pb-8 pt-4 bg-white border-t border-gray-200" data-tour="demo-trade">
+          <PositionControl />
+        </div>
+      )}
     </>
   );
 };

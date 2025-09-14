@@ -1,8 +1,9 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect, useState } from 'react';
 import { Chart as ChartJS, registerables } from 'chart.js';
 import { CandlestickController, CandlestickElement } from 'chartjs-chart-financial';
 import { Chart } from 'react-chartjs-2';
 import { useGameContext } from '../context/GameContext';
+import { useGameData } from '../hooks/useGameData';
 
 // Register Chart.js components
 ChartJS.register(...registerables, CandlestickController, CandlestickElement);
@@ -10,6 +11,13 @@ ChartJS.register(...registerables, CandlestickController, CandlestickElement);
 const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   const { marketData, positions, currentMarketPrice, calculatePositionPnL, totalPnL } = useGameContext();
   const chartRef = useRef(null);
+  
+  // Use the same live data source as the web version
+  const { candles } = useGameData();
+
+  // Add state for smooth data transitions
+  const [cachedData, setCachedData] = useState([]);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Calculate current P&L for display
   const currentPnL = useMemo(() => {
@@ -33,36 +41,94 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
     };
   }, [currentPnL]);
 
-  // Simple data processing
-  const processedData = useMemo(() => {
-    const data = demoData || (useMockData ? marketData : apiData);
-    if (!Array.isArray(data) || data.length === 0) return [];
-    
-    return data.filter(item => 
-      item && 
-      typeof item.x === 'number' && 
-      typeof item.o === 'number' && 
-      typeof item.h === 'number' && 
-      typeof item.l === 'number' && 
-      typeof item.c === 'number' &&
-      !isNaN(item.x) && !isNaN(item.o) && !isNaN(item.h) && !isNaN(item.l) && !isNaN(item.c)
-    ).map((item, index) => ({
-      ...item,
-      x: index
+  // Use the same data source logic as the web version, but prioritize demoData for onboarding
+  const dataSource = useMemo(() => {
+    // If demoData is provided (onboarding mode), use it
+    if (demoData && Array.isArray(demoData) && demoData.length > 0) {
+      return demoData.slice(-30).map((item, index) => ({
+        x: index,
+        h: item.h ?? item.High,
+        l: item.l ?? item.Low,
+        o: item.o ?? item.Open,
+        c: item.c ?? item.Close,
+      }));
+    }
+
+    // Otherwise, use the same logic as web version
+    const data = useMockData ? candles : (useMockData ? marketData : apiData);
+    if (!Array.isArray(data)) return [];
+
+    // Validate and clean data, and convert to sequential index instead of time-based
+    const mapped = data.slice(-30).map((item, index) => ({
+      x: index,
+      h: item.h ?? item.High,
+      l: item.l ?? item.Low,
+      o: item.o ?? item.Open,
+      c: item.c ?? item.Close,
     }));
-  }, [useMockData, marketData, apiData, demoData]);
+
+    return mapped;
+  }, [useMockData, marketData, apiData, candles, demoData]);
+
+  // Smooth data updates with debouncing and intelligent caching
+  const smoothDataSource = useMemo(() => {
+    // Check if only the last candle has changed (common case for live updates)
+    if (cachedData.length > 0 && dataSource.length > 0) {
+      const lastCachedCandle = cachedData[cachedData.length - 1];
+      const lastNewCandle = dataSource[dataSource.length - 1];
+      
+      // If only the last candle values changed, smoothly update just that candle
+      if (cachedData.length === dataSource.length && 
+          lastCachedCandle && lastNewCandle &&
+          lastCachedCandle.x === lastNewCandle.x) {
+        
+        // Create smooth transition for the last candle only
+        const smoothedData = [...cachedData];
+        smoothedData[smoothedData.length - 1] = {
+          ...lastNewCandle,
+          // Optionally add some smoothing to the values
+          h: lastNewCandle.h,
+          l: lastNewCandle.l,
+          o: lastNewCandle.o,
+          c: lastNewCandle.c
+        };
+        
+        // Update cached data for next comparison
+        setCachedData(dataSource);
+        return smoothedData;
+      }
+    }
+    
+    // For major data changes or initial load, update normally but cache for future comparisons
+    setCachedData(dataSource);
+    return dataSource;
+  }, [dataSource, cachedData, setCachedData]);
+
+  // Throttle updates to prevent excessive re-renders
+  const [throttledData, setThrottledData] = useState(smoothDataSource);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setThrottledData(smoothDataSource);
+      setIsUpdating(false);
+    }, 100); // 100ms throttle for smooth updates
+
+    setIsUpdating(true);
+    return () => clearTimeout(timer);
+  }, [smoothDataSource, setIsUpdating]);
 
   // Mobile data windowing - show last 12 candlesticks for better mobile experience
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const mobileDisplayData = useMemo(() => {
-    if (isMobile && processedData.length > 12) {
-      return processedData.slice(-12);
+    const sourceData = throttledData; // Use throttled data for smooth updates
+    if (isMobile && sourceData.length > 12) {
+      return sourceData.slice(-12);
     }
-    return processedData;
-  }, [processedData, isMobile]);
+    return sourceData;
+  }, [throttledData, isMobile]);
 
   const chartData = useMemo(() => {
-    const displayData = isMobile ? mobileDisplayData : processedData;
+    const displayData = isMobile ? mobileDisplayData : throttledData; // Use throttled data for both mobile and desktop
     
     const datasets = [{
       label: 'OHLC Data',
@@ -107,33 +173,70 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
     });
 
     return { datasets };
-  }, [mobileDisplayData, processedData, positions, currentMarketPrice, calculatePositionPnL, isMobile]);
+  }, [mobileDisplayData, throttledData, positions, currentMarketPrice, calculatePositionPnL, isMobile]);
 
-  // Calculate Y axis range - round to nearest 100
+  // Calculate Y axis range with intelligent zoom - much tighter bounds
   const yAxisRange = useMemo(() => {
-    const displayData = isMobile ? mobileDisplayData : processedData;
-    if (displayData.length === 0) return { min: 8000, max: 10000 };
+    const displayData = isMobile ? mobileDisplayData : throttledData; // Use throttled data for smooth Y-axis updates
+    if (displayData.length === 0) return { min: 8000, max: 10000, stepSize: 100 };
 
     const allHighs = displayData.map(d => d.h);
     const allLows = displayData.map(d => d.l);
     const min = Math.min(...allLows);
     const max = Math.max(...allHighs);
-    const padding = (max - min) * 0.1;
+    const range = max - min;
 
-    // Round to nearest 100 for better spacing
-    const roundedMin = Math.floor((min - padding) / 100) * 100;
-    const roundedMax = Math.ceil((max + padding) / 100) * 100;
+    // Intelligent padding based on range size
+    let paddingPercent = 0.05; // Start with 5% padding
+    if (range < 10) paddingPercent = 0.15; // 15% for very small ranges
+    else if (range < 50) paddingPercent = 0.10; // 10% for small ranges
+    else if (range < 200) paddingPercent = 0.08; // 8% for medium ranges
+
+    const padding = range * paddingPercent;
+    const paddedMin = min - padding;
+    const paddedMax = max + padding;
+
+    // Intelligent step size calculation
+    let stepSize;
+    if (range < 5) stepSize = 0.5;     // $0.50 steps for very small ranges
+    else if (range < 10) stepSize = 1;  // $1 steps for small ranges
+    else if (range < 25) stepSize = 2;  // $2 steps for small-medium ranges
+    else if (range < 50) stepSize = 5;  // $5 steps for medium ranges
+    else if (range < 100) stepSize = 10; // $10 steps for larger ranges
+    else if (range < 500) stepSize = 25; // $25 steps for large ranges
+    else stepSize = 50;                  // $50 steps for very large ranges
+
+    // Round bounds to nice numbers based on step size
+    const roundedMin = Math.floor(paddedMin / stepSize) * stepSize;
+    const roundedMax = Math.ceil(paddedMax / stepSize) * stepSize;
+
+    // Reduce console logging for smoother performance
+    if (Math.random() < 0.1) { // Only log 10% of the time
+      console.log(`Chart zoom info - Range: $${range.toFixed(2)}, Step: $${stepSize}, Min: $${roundedMin.toFixed(2)}, Max: $${roundedMax.toFixed(2)}`);
+    }
 
     return {
       min: roundedMin,
-      max: roundedMax
+      max: roundedMax,
+      stepSize: stepSize,
+      range: range
     };
-  }, [mobileDisplayData, processedData, isMobile]);
+  }, [mobileDisplayData, throttledData, isMobile]);
 
   const options = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
-    animation: false,
+    animation: {
+      duration: isUpdating ? 150 : 0, // Smooth but fast animation when updating
+      easing: 'easeOutQuart',
+    },
+    transitions: {
+      active: {
+        animation: {
+          duration: 100
+        }
+      }
+    },
     interaction: {
       intersect: false,
       mode: 'index',
@@ -155,11 +258,14 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
           },
           label: function(context) {
             const point = context.raw;
+            // More precise formatting based on the data range
+            const precision = yAxisRange.stepSize < 1 ? 3 : (yAxisRange.stepSize < 10 ? 2 : 2);
             return [
-              `Open: $${point.o.toFixed(2)}`,
-              `High: $${point.h.toFixed(2)}`,
-              `Low: $${point.l.toFixed(2)}`,
-              `Close: $${point.c.toFixed(2)}`
+              `Open: $${point.o.toFixed(precision)}`,
+              `High: $${point.h.toFixed(precision)}`,
+              `Low: $${point.l.toFixed(precision)}`,
+              `Close: $${point.c.toFixed(precision)}`,
+              `Range: $${(point.h - point.l).toFixed(precision)}`
             ];
           }
         }
@@ -184,11 +290,18 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         },
         ticks: {
           color: '#9ca3af',
-          font: { size: isMobile ? 10 : 12 },
-          maxTicksLimit: isMobile ? 6 : 8,
-          stepSize: 100, // Force 100-unit steps
+          font: { size: isMobile ? 11 : 12, weight: '500' },
+          maxTicksLimit: isMobile ? 8 : 10, // More ticks for better granularity
+          stepSize: yAxisRange.stepSize, // Use intelligent step size
           callback: function(value) {
-            return '$' + Math.round(value / 100) * 100; // Round to nearest 100
+            // Format based on step size for better readability
+            if (yAxisRange.stepSize < 1) {
+              return '$' + value.toFixed(2); // Show cents for very small steps
+            } else if (yAxisRange.stepSize < 10) {
+              return '$' + value.toFixed(1); // Show one decimal for small steps
+            } else {
+              return '$' + Math.round(value); // Show whole numbers for larger steps
+            }
           }
         },
         border: { display: false }
@@ -197,10 +310,10 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
     elements: {
       point: { radius: 0 }
     }
-  }), [yAxisRange, isMobile]);
+  }), [yAxisRange, isMobile, isUpdating]);
 
   return (
-    <div className="relative w-full h-full">
+    <div className={`relative w-full h-full min-h-[300px] transition-opacity duration-150 ${isUpdating ? 'opacity-95' : 'opacity-100'}`}>
       {/* P&L Display - Only show on mobile, positioned above chart */}
       {isMobile && (
         <div className={`absolute -top-12 left-0 z-10 px-2 py-1 ${pnlDisplay.bgColor} rounded-[10px] inline-flex justify-start items-center gap-1`}>
@@ -254,13 +367,21 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
             {/* Sticky Y-axis on the right */}
             <div className="w-16 bg-transparent flex-shrink-0 relative">
               <div className="absolute inset-0 flex flex-col justify-between py-4">
-                {/* Generate Y-axis labels manually */}
+                {/* Generate Y-axis labels manually with intelligent spacing */}
                 {Array.from({ length: 6 }, (_, i) => {
                   const value = yAxisRange.min + (yAxisRange.max - yAxisRange.min) * (5 - i) / 5;
-                  const roundedValue = Math.round(value / 100) * 100;
+                  // Round to appropriate precision based on step size
+                  let displayValue;
+                  if (yAxisRange.stepSize < 1) {
+                    displayValue = value.toFixed(2);
+                  } else if (yAxisRange.stepSize < 10) {
+                    displayValue = value.toFixed(1);
+                  } else {
+                    displayValue = Math.round(value).toString();
+                  }
                   return (
                     <div key={i} className="text-right text-xs text-gray-400 font-['Lato']">
-                      ${roundedValue}
+                      ${displayValue}
                     </div>
                   );
                 })}

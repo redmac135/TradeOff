@@ -1,17 +1,31 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useGameContext } from '../context/GameContext';
 import { useOnboarding } from '../context/OnboardingContext';
 
 const PositionControl = () => {
   // Use GameContext for real trading functionality
   const { cash, positions, handleTrade, handleSellAllPositions, totalPnL, currentMarketPrice, calculatePositionPnL } = useGameContext();
-  const { isDemoMode, demoCash, demoPositions, executeDemoTrade, showInitialPrompt } = useOnboarding();
+  const { isDemoMode, demoCash, demoPositions, showInitialPrompt } = useOnboarding();
   
   const [sliderValue, setSliderValue] = useState(50); // 0-100 range
   const [isSliderActive, setIsSliderActive] = useState(false); // Track hover/active state
-  const sliderRef = useRef(null); // Reference to the slider container
+  const desktopSliderRef = useRef(null); // Reference to the desktop slider container
+  const mobileSliderRef = useRef(null); // Reference to the mobile slider container
+  const [isDragging, setIsDragging] = useState(false); // Track drag state
   
-  // Use demo data when in demo mode, otherwise use real data
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+  
+  // Clean up mounted ref on unmount
+  useEffect(() => {
+    console.log('PositionControl MOUNTED');
+    return () => {
+      console.log('PositionControl UNMOUNTED');
+      isMountedRef.current = false;
+    };
+  }, []);
+  
+  // Always use real data for trading, but display demo data during onboarding if needed
   const displayCash = isDemoMode ? demoCash : cash;
   const displayPositions = isDemoMode ? demoPositions : positions;
   
@@ -20,8 +34,10 @@ const PositionControl = () => {
     return total + calculatePositionPnL(position, currentMarketPrice);
   }, 0);
   
-  // Check if there are open positions
-  const hasOpenPositions = displayPositions.length > 0;
+  // Check if there are open positions (use real positions for trading logic)
+  const hasOpenPositions = positions.length > 0;
+
+  console.log('🔍 NEW SLIDER - hasOpenPositions:', hasOpenPositions, 'sliderValue:', sliderValue);
 
   const handlePositionChange = (position) => {
     console.log('Position button clicked:', position);
@@ -29,72 +45,200 @@ const PositionControl = () => {
     if (position === 'short' || position === 'long') {
       let success = false;
       
-      if (isDemoMode) {
-        // Execute demo trade
-        success = executeDemoTrade(position, sliderValue);
-      } else {
-        // Execute real trade using the GameContext
-        success = handleTrade(position, sliderValue);
-      }
+      // Always use real trading now, no more demo mode for trading
+      console.log('Executing real trade using GameContext');
+      success = handleTrade(position, sliderValue);
       
       if (success) {
-        const tradeAmount = (displayCash * sliderValue) / 100;
+        const tradeAmount = (cash * sliderValue) / 100; // Use real cash for calculations
         console.log(`Successfully executed ${position} trade with ${sliderValue}% allocation ($${tradeAmount.toLocaleString()})`);
       } else {
         console.log(`Failed to execute ${position} trade`);
       }
       
     } else if (position === 'sell') {
-      if (!isDemoMode) {
-        // Sell all positions using GameContext (only in real mode)
-        const result = handleSellAllPositions();
-        console.log('Sold all positions:', result);
-      }
+      // Always use real trading for sell operations
+      const result = handleSellAllPositions();
+      console.log('Sold all positions:', result);
     }
   };
 
-  const handleSliderMouseEnter = () => {
-    if (!hasOpenPositions) {
-      setIsSliderActive(true);
-    }
-  };
-
-  const handleSliderMouseLeave = () => {
-    setIsSliderActive(false);
-  };
-
-    const handleSliderMouseDown = (event) => {
-    if (hasOpenPositions) return; // Don't allow interaction when disabled
+  // ========================================
+  // BRAND NEW SLIDER IMPLEMENTATION
+  // ========================================
+  
+  const handleSliderClick = (event) => {
+    console.log('� NEW SLIDER CLICK - Event received!', event.type);
     
+    if (hasOpenPositions) {
+      console.log('� NEW SLIDER CLICK - Blocked by positions');
+      return;
+    }
+    
+    if (!sliderRef.current) {
+      console.log('� NEW SLIDER CLICK - No slider ref');
+      return;
+    }
+    
+    const rect = sliderRef.current.getBoundingClientRect();
+    console.log('� NEW SLIDER CLICK - Rect:', rect);
+    
+    const x = event.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    const newValue = Math.round(percentage);
+    
+    console.log('� NEW SLIDER CLICK - Setting value to:', newValue);
+    setSliderValue(newValue);
+  };
+  
+  const handleSliderMouseDown = (event) => {
+    console.log('� NEW SLIDER MOUSEDOWN - Event received!', event.type);
+    
+    if (hasOpenPositions) {
+      console.log('� NEW SLIDER MOUSEDOWN - Blocked by positions');
+      return;
+    }
+    
+    setIsDragging(true);
     setIsSliderActive(true);
     
-    // Handle dragging
+    // Handle initial click
+    handleSliderClick(event);
+    
     const handleMouseMove = (moveEvent) => {
-      if (sliderRef.current) {
-        const rect = sliderRef.current.getBoundingClientRect();
-        const x = moveEvent.clientX - rect.left;
-        const percentage = Math.min(Math.max((x / rect.width) * 100, 0), 100);
-        setSliderValue(Math.round(percentage));
-      }
+      console.log('� NEW SLIDER MOVE - Moving');
+      if (!sliderRef.current) return;
+      
+      const rect = sliderRef.current.getBoundingClientRect();
+      const x = moveEvent.clientX - rect.left;
+      const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+      const newValue = Math.round(percentage);
+      
+      console.log('� NEW SLIDER MOVE - Setting value to:', newValue);
+      setSliderValue(newValue);
     };
-
+    
     const handleMouseUp = () => {
+      console.log('� NEW SLIDER MOUSEUP - Ending drag');
+      setIsDragging(false);
+      setIsSliderActive(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-      setIsSliderActive(false); // Remove active state when dragging ends
     };
-
-    // Prevent default to avoid any unwanted behavior
-    event.preventDefault();
     
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  // ========================================
+  // NEW SEPARATE SLIDER IMPLEMENTATIONS
+  // ========================================
+  
+  const handleDesktopSliderClick = (event) => {
+    console.log('🟢 DESKTOP CLICK');
+    if (hasOpenPositions) return;
+    if (!desktopSliderRef.current) return;
+    
+    const rect = desktopSliderRef.current.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const percentage = (x / rect.width) * 100;
+    const newValue = Math.max(0, Math.min(100, Math.round(percentage)));
+    
+    console.log('🟢 DESKTOP CLICK - Setting to:', newValue);
+    setSliderValue(newValue);
+  };
+  
+  const handleDesktopSliderMouseDown = (event) => {
+    console.log('🟢 DESKTOP MOUSEDOWN');
+    if (hasOpenPositions) return;
+    
+    event.preventDefault();
+    setIsDragging(true);
+    setIsSliderActive(true);
+    
+    handleDesktopSliderClick(event);
+    
+    const handleMove = (e) => {
+      if (!desktopSliderRef.current) return;
+      const rect = desktopSliderRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const percentage = (x / rect.width) * 100;
+      const newValue = Math.max(0, Math.min(100, Math.round(percentage)));
+      setSliderValue(newValue);
+    };
+    
+    const handleUp = () => {
+      setIsDragging(false);
+      setIsSliderActive(false);
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+    
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  };
+  
+  const handleMobileSliderClick = (event) => {
+    console.log('🟢 MOBILE CLICK');
+    if (hasOpenPositions) return;
+    if (!mobileSliderRef.current) return;
+    
+    const rect = mobileSliderRef.current.getBoundingClientRect();
+    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+    
+    if (!clientX || isNaN(clientX)) {
+      console.error('🟢 MOBILE CLICK - Invalid clientX:', clientX);
+      return;
+    }
+    
+    const x = clientX - rect.left;
+    const percentage = (x / rect.width) * 100;
+    const newValue = Math.max(0, Math.min(100, Math.round(percentage)));
+    
+    console.log('🟢 MOBILE CLICK - Setting to:', newValue);
+    setSliderValue(newValue);
+  };
+  
+  const handleMobileSliderTouchStart = (event) => {
+    console.log('🟢 MOBILE TOUCHSTART');
+    if (hasOpenPositions) return;
+    
+    event.preventDefault();
+    setIsDragging(true);
+    setIsSliderActive(true);
+    
+    handleMobileSliderClick(event);
+    
+    const handleMove = (e) => {
+      if (!mobileSliderRef.current || !e.touches || !e.touches[0]) return;
+      
+      const rect = mobileSliderRef.current.getBoundingClientRect();
+      const clientX = e.touches[0].clientX;
+      
+      if (!clientX || isNaN(clientX)) return;
+      
+      const x = clientX - rect.left;
+      const percentage = (x / rect.width) * 100;
+      const newValue = Math.max(0, Math.min(100, Math.round(percentage)));
+      setSliderValue(newValue);
+    };
+    
+    const handleEnd = () => {
+      setIsDragging(false);
+      setIsSliderActive(false);
+      document.removeEventListener('touchmove', handleMove);
+      document.removeEventListener('touchend', handleEnd);
+    };
+    
+    document.addEventListener('touchmove', handleMove, { passive: false });
+    document.addEventListener('touchend', handleEnd);
+  };
+
   // Calculate the exact position for better gradient alignment
   const circlePosition = sliderValue;
 
-  const tradeAmount = (displayCash * sliderValue) / 100;
+  // Use real cash for trade amount calculations to ensure consistency
+  const tradeAmount = (cash * sliderValue) / 100;
 
   return (
     <>
@@ -133,42 +277,19 @@ const PositionControl = () => {
         </div>
         <div className="flex-1 relative flex justify-center items-center px-4" data-tour="slider">
           <div 
-            ref={sliderRef}
-            className="flex-1 h-3 rounded-[20px] relative transition-all duration-150 ease-out cursor-pointer"
+            ref={desktopSliderRef}
+            className="flex-1 h-3 rounded-[20px] relative transition-all duration-150 ease-out cursor-pointer bg-gray-200"
             style={{
               background: `linear-gradient(to right, #005eaa 0%, #005eaa ${circlePosition}%, #f1f6f9 ${circlePosition}%, #f1f6f9 100%)`
             }}
-            onMouseDown={handleSliderMouseDown}
-            onMouseEnter={handleSliderMouseEnter}
-            onMouseLeave={handleSliderMouseLeave}
+            onMouseDown={handleDesktopSliderMouseDown}
+            onClick={handleDesktopSliderClick}
           >
-            {/* Interactive range input */}
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={sliderValue}
-              onChange={(e) => setSliderValue(parseInt(e.target.value))}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              disabled={hasOpenPositions}
-              style={{
-                background: 'transparent'
-              }}
-            />
-            {/* Outer circle - only show on hover/active */}
-            {isSliderActive && (
-              <div 
-                className="w-10 h-10 absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 bg-[#72a6cf]/50 rounded-full backdrop-blur-[5px] pointer-events-none transition-all duration-150 ease-out"
-                style={{ left: `${circlePosition}%` }}
-              />
-            )}
-            {/* Inner circle - always visible with hover detection */}
+            {/* NEW SIMPLE SLIDER - No hidden inputs blocking events */}
+            
+            {/* Slider circle */}
             <div 
-              className={`w-6 h-6 absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 rounded-full transition-all duration-150 ease-out z-20 pointer-events-none ${
-                hasOpenPositions 
-                  ? 'bg-gray-400' 
-                  : 'bg-[#72a6cf]'
-              }`}
+              className="w-6 h-6 absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 rounded-full bg-blue-600 transition-all duration-150 ease-out z-10 pointer-events-none"
               style={{ left: `${circlePosition}%` }}
             />
           </div>
@@ -189,11 +310,11 @@ const PositionControl = () => {
         </div>
       </div>
 
-      {/* Mobile Layout - Vertical stack: Cash/P&L (top), Text, Slider, Buttons (bottom) */}
-      <div className="md:hidden w-full shadow-[4px_4px_20px_0px_rgba(0,0,0,0.10)] bg-white rounded-[10px] p-4 flex flex-col gap-4">
-        
-        {/* Cash Position and Total P&L Section - Top - Only show when not in initial prompt */}
-        {!showInitialPrompt && (
+      {/* Mobile Layout - Vertical stack: Cash/P&L (top), Text, Slider, Buttons (bottom) - Only show when not in initial prompt */}
+      {!showInitialPrompt && (
+        <div className="md:hidden w-full shadow-[4px_4px_20px_0px_rgba(0,0,0,0.10)] bg-white rounded-[10px] p-4 flex flex-col gap-4">
+          
+          {/* Cash Position and Total P&L Section - Top */}
           <div className="self-stretch inline-flex flex-col justify-start items-start gap-2">
             <div className="self-stretch inline-flex justify-between items-center">
               <div className="justify-start text-blue-600 text-lg font-normal font-['Lato']">Cash Position</div>
@@ -209,9 +330,8 @@ const PositionControl = () => {
               </div>
             </div>
           </div>
-        )}
 
-        {/* Text Section */}
+          {/* Text Section */}
         <div className="flex justify-center items-center">
           <div className="text-sm font-medium text-gray-600 text-center">
             {hasOpenPositions ? (
@@ -232,42 +352,20 @@ const PositionControl = () => {
         {/* Slider Section - Middle */}
         <div className="relative flex justify-center items-center px-4" data-tour="slider">
           <div 
-            ref={sliderRef}
-            className="w-full h-3 rounded-[20px] relative transition-all duration-150 ease-out cursor-pointer"
+            ref={mobileSliderRef}
+            className="w-full h-3 rounded-[20px] relative transition-all duration-150 ease-out cursor-pointer bg-gray-200"
             style={{
               background: `linear-gradient(to right, #005eaa 0%, #005eaa ${circlePosition}%, #f1f6f9 ${circlePosition}%, #f1f6f9 100%)`
             }}
-            onMouseDown={handleSliderMouseDown}
-            onMouseEnter={handleSliderMouseEnter}
-            onMouseLeave={handleSliderMouseLeave}
+            onMouseDown={handleDesktopSliderMouseDown}
+            onClick={handleMobileSliderClick}
+            onTouchStart={handleMobileSliderTouchStart}
           >
-            {/* Interactive range input */}
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={sliderValue}
-              onChange={(e) => setSliderValue(parseInt(e.target.value))}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              disabled={hasOpenPositions}
-              style={{
-                background: 'transparent'
-              }}
-            />
-            {/* Outer circle - only show on hover/active */}
-            {isSliderActive && (
-              <div 
-                className="w-10 h-10 absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 bg-[#72a6cf]/50 rounded-full backdrop-blur-[5px] pointer-events-none transition-all duration-150 ease-out"
-                style={{ left: `${circlePosition}%` }}
-              />
-            )}
-            {/* Inner circle - always visible with hover detection */}
+            {/* NEW SIMPLE SLIDER - No hidden inputs blocking events */}
+            
+            {/* Slider circle */}
             <div 
-              className={`w-6 h-6 absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 rounded-full transition-all duration-150 ease-out z-20 pointer-events-none ${
-                hasOpenPositions 
-                  ? 'bg-gray-400' 
-                  : 'bg-[#72a6cf]'
-              }`}
+              className="w-6 h-6 absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 rounded-full bg-blue-600 transition-all duration-150 ease-out z-10 pointer-events-none"
               style={{ left: `${circlePosition}%` }}
             />
           </div>
@@ -305,7 +403,8 @@ const PositionControl = () => {
             </>
           )}
         </div>
-      </div>
+        </div>
+      )}
     </>
   );
 };
