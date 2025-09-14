@@ -20,6 +20,7 @@ import {
 } from 'chartjs-chart-financial';
 import { Chart } from 'react-chartjs-2';
 import 'chartjs-adapter-date-fns';
+import { useGameData } from '../hooks/useGameData';
 
 // Register Chart.js components
 ChartJS.register(
@@ -48,31 +49,27 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
   const [chartError, setChartError] = useState(null);
   const [forceRerender, setForceRerender] = useState(0);
 
+  const { candles } = useGameData();
+  // set data source based on mode
+
   // Use marketData from context, ensure it's always an array with valid data
   const dataSource = useMemo(() => {
-    const data = demoData || (useMockData ? marketData : apiData);
+    const data = useMockData ? candles : (useMockData ? marketData : apiData);
     if (!Array.isArray(data)) return [];
-    
+
+
     // Validate and clean data, and convert to sequential index instead of time-based
-    const validData = data.filter(item => 
-      item && 
-      typeof item.x === 'number' && 
-      typeof item.o === 'number' && 
-      typeof item.h === 'number' && 
-      typeof item.l === 'number' && 
-      typeof item.c === 'number' &&
-      !isNaN(item.x) && !isNaN(item.o) && !isNaN(item.h) && !isNaN(item.l) && !isNaN(item.c) &&
-      item.h >= item.l && // High should be >= Low
-      item.h >= Math.max(item.o, item.c) && // High should be >= Open and Close
-      item.l <= Math.min(item.o, item.c) // Low should be <= Open and Close
-    ).slice(-50); // Keep last 50 for scrolling capability
+    const mapped = data.slice(-30).map((item, index) => ({
+      x: index,
+      h: item.h ?? item.High,
+      l: item.l ?? item.Low,
+      o: item.o ?? item.Open,
+      c: item.c ?? item.Close,
+    }));
 
     // Convert to sequential indexing to avoid gaps
-    return validData.map((item, index) => ({
-      ...item,
-      x: index // Use sequential index instead of timestamp
-    }));
-  }, [useMockData, marketData, apiData, demoData]);
+    return mapped;
+  }, [useMockData, marketData, apiData, demoData, candles]);
 
   // Calculate viewport for mobile scrolling
   const isMobile = window.innerWidth < 768;
@@ -84,7 +81,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
     const handleVisibilityChange = () => {
       const isPageVisible = !document.hidden;
       setIsVisible(isPageVisible);
-      
+
       if (isPageVisible) {
         console.log('Page became visible, refreshing chart...');
         // Small delay to ensure the page is fully active
@@ -118,7 +115,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         setChartError(null);
         setChartKey(prev => prev + 1);
         setLastResetTime(Date.now());
-        
+
         // Clean up old chart instance
         if (chartRef.current) {
           try {
@@ -186,7 +183,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
 
       const currentMin = Math.min(...allLows);
       const currentMax = Math.max(...allHighs);
-      
+
       // Ensure valid ranges
       if (currentMin >= currentMax || !isFinite(currentMin) || !isFinite(currentMax)) {
         return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
@@ -195,7 +192,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       // Calculate padding (5% on each side, minimum $50)
       const range = currentMax - currentMin;
       const padding = Math.max(range * 0.05, 50);
-      
+
       // Round to nice numbers for better visualization
       const yMin = Math.floor((currentMin - padding) / 10) * 10;
       const yMax = Math.ceil((currentMax + padding) / 10) * 10;
@@ -211,7 +208,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       }
 
       return { yMin, yMax, xMin, xMax };
-      
+
     } catch (error) {
       console.error('Error calculating axis ranges:', error);
       return { yMin: 8000, yMax: 10000, xMin: 0, xMax: 30 };
@@ -244,7 +241,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       positions.forEach((position) => {
         const profitLoss = calculatePositionPnL(position, currentMarketPrice);
         const isProfit = profitLoss >= 0;
-        
+
         // Determine color based on position type and current profit/loss
         let lineColor;
         if (position.type === 'long') {
@@ -256,7 +253,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         // Create horizontal line data across the entire chart width
         const xMin = dataSource.length > 0 ? Math.min(...dataSource.map(d => d.x)) : 0;
         const xMax = dataSource.length > 0 ? Math.max(...dataSource.map(d => d.x)) : 30;
-        
+
         datasets.push({
           label: `${position.type.toUpperCase()} Entry - $${position.entryPrice.toFixed(2)}`,
           type: 'line',
@@ -434,7 +431,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
         return (
           <div className="flex flex-col items-center justify-center h-full text-red-500 space-y-2">
             <div>Chart Error: {chartError}</div>
-            <button 
+            <button
               onClick={() => {
                 setChartError(null);
                 setChartKey(prev => prev + 1);
@@ -465,16 +462,16 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       }
 
       return (
-        <Chart 
+        <Chart
           key={`${chartKey}-${forceRerender}`}
-          ref={chartRef} 
-          type="candlestick" 
-          data={chartData} 
+          ref={chartRef}
+          type="candlestick"
+          data={chartData}
           options={options}
           fallbackContent={
             <div className="flex flex-col items-center justify-center h-full text-red-500 space-y-2">
               <div>Chart failed to load</div>
-              <button 
+              <button
                 onClick={() => {
                   setChartError(null);
                   setChartKey(prev => prev + 1);
@@ -493,7 +490,7 @@ const FinancialChart = ({ useMockData = true, apiData = [], demoData }) => {
       return (
         <div className="flex flex-col items-center justify-center h-full text-red-500 space-y-2">
           <div>Chart rendering failed</div>
-          <button 
+          <button
             onClick={() => {
               setChartError(null);
               setChartKey(prev => prev + 1);

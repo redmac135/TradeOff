@@ -10,16 +10,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.888.0",
+    "@aws-sdk/lib-dynamodb": "^3.888.0",
     "@reactour/tour": "^3.8.0",
     "@tailwindcss/vite": "^4.1.13",
     "chart.js": "^4.5.0",
     "chartjs-adapter-date-fns": "^3.0.0",
     "chartjs-chart-financial": "^0.2.1",
     "date-fns": "^3.6.0",
+    "lucide-react": "^0.544.0",
     "react": "^19.1.1",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^19.1.1",
-    "lucide-react": "^0.271.0",
     "repomix": "^1.4.2",
     "tailwindcss": "^4.1.13"
   },
