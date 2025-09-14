@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import OnboardingBackground from './OnboardingBackground';
 import OnboardingHeader from './OnboardingHeader';
+import { GraduationCap, Car, Home, ChevronUp } from 'lucide-react';
 
 const OnboardingLevelOptions = ({ onNext }) => {
   const [selectedLevel, setSelectedLevel] = useState(null);
@@ -9,35 +10,26 @@ const OnboardingLevelOptions = ({ onNext }) => {
     {
       id: 'easy',
       title: 'Pay for my tuition next year',
-      difficulty: 'Easy',
-      icon: '📚', // Temporary icon, will be replaced
-      details: {
-        startingBalance: '$10,000',
-        targetAmount: '$15,000',
-        timeLimit: '6 months'
-      }
+      icon: GraduationCap,
+      startingAmount: '$1,000',
+      targetAmount: '$10,000',
+      description: 'and invest to reach $10,000 for your tuition.'
     },
     {
       id: 'medium',
       title: 'Purchase my first vehicle',
-      difficulty: 'Medium',
-      icon: '🚗', // Temporary icon, will be replaced
-      details: {
-        startingBalance: '$5,000',
-        targetAmount: '$25,000',
-        timeLimit: '1 year'
-      }
+      icon: Car,
+      startingAmount: '$5,000',
+      targetAmount: '$20,000',
+      description: 'and invest to reach $20,000 for your car.'
     },
     {
       id: 'hard',
       title: 'Pay the down payment on a home',
-      difficulty: 'Hard',
-      icon: '🏠', // Temporary icon, will be replaced
-      details: {
-        startingBalance: '$2,000',
-        targetAmount: '$50,000',
-        timeLimit: '2 years'
-      }
+      icon: Home,
+      startingAmount: '$15,000',
+      targetAmount: '$50,000',
+      description: 'and invest to reach $50,000 for your first home.'
     }
   ];
 
@@ -45,12 +37,12 @@ const OnboardingLevelOptions = ({ onNext }) => {
     setSelectedLevel(selectedLevel === levelId ? null : levelId);
   };
 
-  const handleNext = () => {
-    if (selectedLevel) {
-      // Save the selected level for later use
-      localStorage.setItem('selectedLevel', selectedLevel);
-      onNext();
-    }
+  const handleLevelNext = (level) => {
+    // Save the selected level and starting amount for the game
+    localStorage.setItem('selectedLevel', level.id);
+    localStorage.setItem('startingCash', level.startingAmount.replace('$', '').replace(',', ''));
+    localStorage.setItem('targetAmount', level.targetAmount.replace('$', '').replace(',', ''));
+    onNext();
   };
 
   return (
@@ -62,84 +54,77 @@ const OnboardingLevelOptions = ({ onNext }) => {
         {/* Level Options Section */}
         <div className="self-stretch flex flex-col justify-start items-center gap-6">
           <div className="self-stretch flex flex-col justify-start items-center gap-2">
-            <div className="justify-start text-700 text-2xl font-bold font-['Lato']">
+            <div className="justify-start text-700 text-xl font-bold font-['Lato']">
               Level Options
             </div>
-            <div className="justify-start text-600 text-lg font-light font-['Lato']">
+            <div className="justify-start text-600 text-base font-light font-['Lato']">
               Choose your goal and starting balance
             </div>
           </div>
 
           {/* Accordion Options */}
-          <div className="w-96 inline-flex flex-col justify-start items-start gap-6">
-            {levels.map((level) => (
-              <div
-                key={level.id}
-                onClick={() => handleLevelSelect(level.id)}
-                className={`self-stretch p-4 relative rounded-[10px] shadow-[4px_4px_10px_0px_rgba(0,0,0,0.10)] flex flex-col justify-center items-start gap-2.5 cursor-pointer transition-all duration-300 ${
-                  selectedLevel === level.id ? 'bg-Blue bg-opacity-10 border-2 border-Blue' : 'bg-50'
-                }`}
-              >
-                {/* Main Content */}
-                <div className="w-full flex flex-col justify-start items-start gap-2.5">
-                  <div className="flex items-center justify-between w-full">
+          <div className="w-96 inline-flex flex-col justify-start items-start gap-4">
+            {levels.map((level) => {
+              const IconComponent = level.icon;
+              const isSelected = selectedLevel === level.id;
+              
+              return (
+                <div
+                  key={level.id}
+                  className={`self-stretch p-4 relative rounded-[10px] shadow-[4px_4px_10px_0px_rgba(0,0,0,0.10)] flex flex-col justify-center items-start gap-3 cursor-pointer transition-all duration-300 ${
+                    isSelected ? 'bg-Blue bg-opacity-5 border border-Blue' : 'bg-50'
+                  }`}
+                >
+                  {/* Main Content Header */}
+                  <div 
+                    className="w-full flex items-center justify-between"
+                    onClick={() => handleLevelSelect(level.id)}
+                  >
                     <div className="flex items-center gap-3">
-                      {/* Icon placeholder */}
-                      <div className="size-6 relative overflow-hidden flex items-center justify-center">
-                        <div className="w-6 h-5 bg-400 rounded" />
+                      {/* Icon */}
+                      <div className="size-6 flex items-center justify-center">
+                        <IconComponent className="w-6 h-6 text-Blue" />
                       </div>
                       {/* Title */}
-                      <div className="justify-start text-800 text-2xl font-semibold font-['Lato']">
+                      <div className="justify-start text-800 text-lg font-semibold font-['Lato']">
                         {level.title}
                       </div>
                     </div>
                     
                     {/* Dropdown Arrow */}
-                    <div className={`size-6 overflow-hidden flex items-center justify-center transition-transform duration-300 ${
-                      selectedLevel === level.id ? 'rotate-180' : ''
+                    <div className={`size-6 flex items-center justify-center transition-transform duration-300 ${
+                      isSelected ? 'rotate-180' : ''
                     }`}>
-                      <div className="w-3 h-2 bg-300 transform rotate-90" style={{
-                        clipPath: 'polygon(0 0, 100% 50%, 0 100%)'
-                      }} />
+                      <ChevronUp className="w-4 h-4 text-300" />
                     </div>
                   </div>
 
                   {/* Expanded Content */}
-                  {selectedLevel === level.id && (
-                    <div className="w-full mt-4 p-4 bg-white bg-opacity-50 rounded-lg animate-slideDown">
-                      <div className="flex flex-col gap-2">
-                        <div className="text-700 text-lg font-medium font-['Lato']">
-                          Difficulty: {level.difficulty}
-                        </div>
+                  {isSelected && (
+                    <div className="w-full animate-slideDown">
+                      {/* Description */}
+                      <div className="mb-4">
                         <div className="text-600 text-base font-light font-['Lato']">
-                          Starting Balance: {level.details.startingBalance}
+                          Start with <span className="text-Yellow font-semibold">{level.startingAmount}</span> {level.description}
                         </div>
-                        <div className="text-600 text-base font-light font-['Lato']">
-                          Target Amount: {level.details.targetAmount}
-                        </div>
-                        <div className="text-600 text-base font-light font-['Lato']">
-                          Time Limit: {level.details.timeLimit}
+                      </div>
+
+                      {/* Next Button */}
+                      <div 
+                        onClick={() => handleLevelNext(level)}
+                        className="w-full py-3 px-6 bg-Blue rounded-[10px] flex justify-center items-center cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                      >
+                        <div className="text-Light-Blue text-lg font-semibold font-['Lato']">
+                          Next
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
-
-        {/* Next Button */}
-        {selectedLevel && (
-          <div 
-            onClick={handleNext}
-            className="w-96 px-16 py-4 bg-Blue rounded-[10px] inline-flex justify-center items-center gap-2.5 cursor-pointer hover:opacity-90 transition-opacity duration-200"
-          >
-            <div className="justify-start text-Light-Blue text-2xl font-semibold font-['Lato']">
-              Start Game
-            </div>
-          </div>
-        )}
       </div>
     </OnboardingBackground>
   );
